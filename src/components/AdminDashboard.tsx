@@ -75,9 +75,9 @@ import { CSS } from '@dnd-kit/utilities';
 interface Profile {
   id: string;
   email: string;
-  full_name: string | null;
-  role: 'admin' | 'couple' | 'guest';
-  status: 'active' | 'blocked';
+  wedding_name: string | null;
+  role: 'super_admin' | 'couple';
+  is_blocked: boolean;
   created_at: string;
 }
 
@@ -85,9 +85,8 @@ interface AccessCode {
   id: string;
   code: string;
   linked_user_id: string | null;
-  wedding_name: string | null;
-  status: 'active' | 'inactive';
-  usage_count: number;
+  event_name: string | null;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -113,7 +112,7 @@ interface Feedback {
   image_url: string | null;
   status: 'new' | 'in-progress' | 'resolved';
   created_at: string;
-  profiles?: {
+  users?: {
     email: string;
   };
 }
@@ -195,10 +194,10 @@ export const AdminDashboard: React.FC = () => {
     setIsLoading(true);
     try {
       const [pRes, aRes, mRes, fRes] = await Promise.all([
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('users').select('*').order('created_at', { ascending: false }),
         supabase.from('access_codes').select('*').order('created_at', { ascending: false }),
         supabase.from('dashboard_modules').select('*').order('order', { ascending: true }),
-        supabase.from('user_feedback').select('*, profiles(email)').order('created_at', { ascending: false })
+        supabase.from('user_feedback').select('*, users(email)').order('created_at', { ascending: false })
       ]);
 
       if (pRes.data) setProfiles(pRes.data as Profile[]);
@@ -215,18 +214,17 @@ export const AdminDashboard: React.FC = () => {
 
   // --- User Management Actions ---
 
-  const toggleUserStatus = async (userId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
-    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
+  const toggleUserStatus = async (userId: string, isBlocked: boolean) => {
+    const { error } = await supabase.from('users').update({ is_blocked: !isBlocked }).eq('id', userId);
     if (error) toast.error(error.message);
     else {
-      setProfiles(profiles.map(p => p.id === userId ? { ...p, status: newStatus as any } : p));
-      toast.success(`User ${newStatus === 'active' ? 'unblocked' : 'blocked'}`);
+      setProfiles(profiles.map(p => p.id === userId ? { ...p, is_blocked: !isBlocked } : p));
+      toast.success(`User ${!isBlocked ? 'blocked' : 'unblocked'}`);
     }
   };
 
   const changeUserRole = async (userId: string, newRole: string) => {
-    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+    const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
     if (error) toast.error(error.message);
     else {
       setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole as any } : p));
@@ -235,7 +233,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const deleteUser = async (userId: string) => {
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    const { error } = await supabase.from('users').delete().eq('id', userId);
     if (error) toast.error(error.message);
     else {
       setProfiles(profiles.filter(p => p.id !== userId));
@@ -247,46 +245,35 @@ export const AdminDashboard: React.FC = () => {
 
   const [isAddingCode, setIsAddingCode] = useState(false);
   const [newManualCode, setNewManualCode] = useState('');
+  const [newEventName, setNewEventName] = useState('');
 
   const createManualCode = async () => {
-    if (!newManualCode) return;
+    if (!newManualCode || !newEventName) {
+      toast.error('Code and event name are required');
+      return;
+    }
     const { data, error } = await supabase.from('access_codes').insert([{
       code: newManualCode,
-      status: 'active',
-      usage_count: 0
+      event_name: newEventName,
+      is_active: true
     }]).select();
 
     if (error) toast.error(error.message);
     else if (data) {
       setAccessCodes([data[0] as AccessCode, ...accessCodes]);
       setNewManualCode('');
+      setNewEventName('');
       setIsAddingCode(false);
       toast.success(`Code created: ${newManualCode}`);
     }
   };
 
-  const generateNewCode = async () => {
-    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const { data, error } = await supabase.from('access_codes').insert([{
-      code: newCode,
-      status: 'active',
-      usage_count: 0
-    }]).select();
-
-    if (error) toast.error(error.message);
-    else if (data) {
-      setAccessCodes([data[0] as AccessCode, ...accessCodes]);
-      toast.success(`Generated code: ${newCode}`);
-    }
-  };
-
-  const toggleCodeStatus = async (codeId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    const { error } = await supabase.from('access_codes').update({ status: newStatus }).eq('id', codeId);
+  const toggleCodeStatus = async (codeId: string, isActive: boolean) => {
+    const { error } = await supabase.from('access_codes').update({ is_active: !isActive }).eq('id', codeId);
     if (error) toast.error(error.message);
     else {
-      setAccessCodes(accessCodes.map(c => c.id === codeId ? { ...c, status: newStatus as any } : c));
-      toast.success(`Code ${newStatus}`);
+      setAccessCodes(accessCodes.map(c => c.id === codeId ? { ...c, is_active: !isActive } : c));
+      toast.success(`Code ${!isActive ? 'activated' : 'deactivated'}`);
     }
   };
 
@@ -482,25 +469,25 @@ export const AdminDashboard: React.FC = () => {
                                 {profile.email[0].toUpperCase()}
                               </div>
                               <div>
-                                <div className="text-sm font-bold">{profile.full_name || 'Anonymous User'}</div>
+                                <div className="text-sm font-bold">{profile.wedding_name || 'Anonymous User'}</div>
                                 <div className="text-[10px] text-stone-400 font-mono">{profile.email}</div>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <Badge variant={profile.role === 'admin' ? 'default' : 'secondary'} className="rounded-none uppercase text-[9px] tracking-widest">
-                              {profile.role}
+                            <Badge variant={profile.role === 'super_admin' ? 'default' : 'secondary'} className="rounded-none uppercase text-[9px] tracking-widest">
+                              {profile.role === 'super_admin' ? 'Admin' : 'Couple'}
                             </Badge>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              {profile.status === 'active' ? (
+                              {!profile.is_blocked ? (
                                 <CheckCircle2 className="h-3 w-3 text-green-500" />
                               ) : (
                                 <XCircle className="h-3 w-3 text-red-500" />
                               )}
-                              <span className={`text-[10px] uppercase tracking-widest font-bold ${profile.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
-                                {profile.status}
+                              <span className={`text-[10px] uppercase tracking-widest font-bold ${!profile.is_blocked ? 'text-green-600' : 'text-red-600'}`}>
+                                {!profile.is_blocked ? 'Active' : 'Blocked'}
                               </span>
                             </div>
                           </td>
@@ -513,14 +500,14 @@ export const AdminDashboard: React.FC = () => {
                                 <MoreVertical className="h-4 w-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="rounded-none w-48">
-                                <DropdownMenuItem onClick={() => toggleUserStatus(profile.id, profile.status)}>
-                                  {profile.status === 'active' ? <ShieldOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}
-                                  {profile.status === 'active' ? 'Block Access' : 'Unblock Access'}
+                                <DropdownMenuItem onClick={() => toggleUserStatus(profile.id, profile.is_blocked)}>
+                                  {!profile.is_blocked ? <ShieldOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}
+                                  {!profile.is_blocked ? 'Block Access' : 'Unblock Access'}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => changeUserRole(profile.id, profile.role === 'admin' ? 'couple' : 'admin')}>
-                                  {profile.role === 'admin' ? <UserMinus className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                                  {profile.role === 'admin' ? 'Make User' : 'Make Admin'}
+                                <DropdownMenuItem onClick={() => changeUserRole(profile.id, profile.role === 'super_admin' ? 'couple' : 'super_admin')}>
+                                  {profile.role === 'super_admin' ? <UserMinus className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                                  {profile.role === 'super_admin' ? 'Make Couple' : 'Make Admin'}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-red-600" onClick={() => deleteUser(profile.id)}>
@@ -549,23 +536,32 @@ export const AdminDashboard: React.FC = () => {
             >
               <div className="flex justify-end gap-3">
                 <Dialog open={isAddingCode} onOpenChange={setIsAddingCode}>
-                  <DialogTrigger render={<Button variant="outline" className="rounded-none">
+                  <DialogTrigger render={<Button variant="outline" className="rounded-none bg-black text-white hover:bg-black/90">
                     <Plus className="mr-2 h-4 w-4" /> Create Custom Code
                   </Button>} />
                   <DialogContent className="rounded-none">
                     <DialogHeader>
                       <DialogTitle className="font-serif italic text-2xl">Create Access Code</DialogTitle>
                       <DialogDescription className="uppercase tracking-widest text-[10px] font-bold">
-                        Manually define a code for a couple or guest
+                        Manually define an access code for an upcoming event
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 flex flex-col gap-4">
                       <div className="space-y-2">
                         <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Access Code</Label>
                         <Input 
                           value={newManualCode} 
-                          onChange={(e) => setNewManualCode(e.target.value)}
+                          onChange={(e) => setNewManualCode(e.target.value.toUpperCase())}
                           placeholder="e.g. SMITH2026"
+                          className="rounded-none border-stone-200 uppercase"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Event Name</Label>
+                        <Input 
+                          value={newEventName} 
+                          onChange={(e) => setNewEventName(e.target.value)}
+                          placeholder="e.g. Sarah & John's Wedding"
                           className="rounded-none border-stone-200"
                         />
                       </div>
@@ -578,9 +574,6 @@ export const AdminDashboard: React.FC = () => {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Button className="rounded-none bg-black hover:bg-black/90" onClick={generateNewCode}>
-                  <Plus className="mr-2 h-4 w-4" /> Generate Random Code
-                </Button>
               </div>
 
               <Card className="rounded-none border-stone-200 shadow-sm overflow-hidden">
@@ -590,7 +583,6 @@ export const AdminDashboard: React.FC = () => {
                       <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Code</th>
                       <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Wedding / Link</th>
                       <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Status</th>
-                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Usage</th>
                       <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -601,23 +593,20 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-mono text-xl font-bold tracking-widest">{code.code}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-bold">{code.wedding_name || 'Unlinked Code'}</div>
+                          <div className="text-sm font-bold">{code.event_name || 'Unlinked Code'}</div>
                           <div className="text-[10px] text-stone-400 font-mono italic">ID: {code.linked_user_id || 'N/A'}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant={code.status === 'active' ? 'default' : 'outline'} className="rounded-none uppercase text-[9px] tracking-widest">
-                            {code.status}
+                          <Badge variant={code.is_active ? 'default' : 'outline'} className="rounded-none uppercase text-[9px] tracking-widest">
+                            {code.is_active ? 'Active' : 'Inactive'}
                           </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-mono">{code.usage_count}</div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => toggleCodeStatus(code.id, code.status)}>
-                              {code.status === 'active' ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                            <Button variant="ghost" size="icon" onClick={() => toggleCodeStatus(code.id, code.is_active)}>
+                              {code.is_active ? <XCircle className="h-4 w-4 text-stone-400" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-red-500" onClick={async () => {
+                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={async () => {
                               const { error } = await supabase.from('access_codes').delete().eq('id', code.id);
                               if (!error) setAccessCodes(accessCodes.filter(c => c.id !== code.id));
                             }}>
@@ -821,7 +810,7 @@ export const AdminDashboard: React.FC = () => {
                       </span>
                     </div>
                     <CardTitle className="text-xs font-bold uppercase tracking-widest text-stone-500">
-                      {item.profiles?.email || 'Anonymous'}
+                      {item.users?.email || 'Anonymous'}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 space-y-4">

@@ -19,7 +19,8 @@ import {
   ArrowRight,
   LayoutGrid,
   List,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { 
   DndContext, 
@@ -87,7 +88,7 @@ interface LogisticsManagerProps {
   refreshData: () => void;
 }
 
-const SortableItineraryItem = ({ item, onDelete }: { item: ItineraryItem, onDelete: (id: string) => void }) => {
+const SortableItineraryItem = ({ item, onDelete, onEdit }: { item: ItineraryItem, onDelete: (id: string) => void, onEdit: (item: ItineraryItem) => void }) => {
   const {
     attributes,
     listeners,
@@ -118,14 +119,24 @@ const SortableItineraryItem = ({ item, onDelete }: { item: ItineraryItem, onDele
         <h4 className="text-sm font-semibold text-zinc-900">{item.activity}</h4>
         <p className="text-xs text-zinc-400">{item.location}</p>
       </div>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 hover:text-red-600"
-        onClick={() => onDelete(item.id)}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <div className="flex gap-1">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+          onClick={() => onEdit(item)}
+        >
+          <Edit2 className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 hover:text-red-600"
+          onClick={() => onDelete(item.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
@@ -144,6 +155,9 @@ export const LogisticsManager: React.FC<LogisticsManagerProps> = ({
   const [view, setView] = useState<'timeline' | 'itinerary'>('timeline');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isItineraryDialogOpen, setIsItineraryDialogOpen] = useState(false);
+  
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingItinerary, setEditingItinerary] = useState<ItineraryItem | null>(null);
   
   const [newTask, setNewTask] = useState({
     title: '',
@@ -218,6 +232,48 @@ export const LogisticsManager: React.FC<LogisticsManagerProps> = ({
       toast.success('Activity added');
       setIsItineraryDialogOpen(false);
       setNewItineraryItem({ start_time: '12:00 PM', duration: '1 hour', activity: '', location: '' });
+      refreshData();
+    }
+  };
+
+  const handleEditTask = () => {
+    if (!editingTask || !editingTask.title) {
+      toast.error('Please enter a task title');
+      return;
+    }
+    
+    onUpdateTask(editingTask.id, {
+      title: editingTask.title,
+      status: editingTask.status,
+      due_date: editingTask.due_date,
+      category: editingTask.category
+    });
+    
+    toast.success('Task updated');
+    setEditingTask(null);
+  };
+
+  const handleEditItinerary = async () => {
+    if (!editingItinerary || !editingItinerary.activity) {
+      toast.error('Please enter an activity');
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('itinerary_items')
+      .update({
+        activity: editingItinerary.activity,
+        location: editingItinerary.location,
+        start_time: editingItinerary.start_time,
+        duration: editingItinerary.duration
+      })
+      .eq('id', editingItinerary.id);
+      
+    if (error) {
+      toast.error('Failed to update activity');
+    } else {
+      toast.success('Activity updated');
+      setEditingItinerary(null);
       refreshData();
     }
   };
@@ -357,6 +413,99 @@ export const LogisticsManager: React.FC<LogisticsManagerProps> = ({
             </DialogContent>
           </Dialog>
         )}
+
+        <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="font-serif italic text-2xl">Edit Logistics Task</DialogTitle>
+            </DialogHeader>
+            {editingTask && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Task Title</Label>
+                  <Input 
+                    value={editingTask.title}
+                    onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Input 
+                      value={editingTask.category}
+                      onChange={(e) => setEditingTask({ ...editingTask, category: e.target.value })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Due Date</Label>
+                    <Input 
+                      type="date" 
+                      value={editingTask.due_date}
+                      onChange={(e) => setEditingTask({ ...editingTask, due_date: e.target.value })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingTask(null)} className="rounded-xl">Cancel</Button>
+              <Button onClick={handleEditTask} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!editingItinerary} onOpenChange={(open) => !open && setEditingItinerary(null)}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="font-serif italic text-2xl">Edit Itinerary Activity</DialogTitle>
+            </DialogHeader>
+            {editingItinerary && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Activity</Label>
+                  <Input 
+                    value={editingItinerary.activity}
+                    onChange={(e) => setEditingItinerary({ ...editingItinerary, activity: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Location</Label>
+                  <Input 
+                    value={editingItinerary.location}
+                    onChange={(e) => setEditingItinerary({ ...editingItinerary, location: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Start Time</Label>
+                    <Input 
+                      value={editingItinerary.start_time}
+                      onChange={(e) => setEditingItinerary({ ...editingItinerary, start_time: e.target.value })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration</Label>
+                    <Input 
+                      value={editingItinerary.duration}
+                      onChange={(e) => setEditingItinerary({ ...editingItinerary, duration: e.target.value })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingItinerary(null)} className="rounded-xl">Cancel</Button>
+              <Button onClick={handleEditItinerary} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {view === 'timeline' ? (
@@ -387,6 +536,7 @@ export const LogisticsManager: React.FC<LogisticsManagerProps> = ({
                               <MoreVertical className="h-3 w-3" />
                             </Button>} />
                             <DropdownMenuContent align="end" className="rounded-xl">
+                              <DropdownMenuItem onClick={() => setEditingTask(task)}>Edit Task</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onUpdateTask(task.id, { status: 'todo' })}>Move to To-Do</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onUpdateTask(task.id, { status: 'in-progress' })}>Move to In Progress</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onUpdateTask(task.id, { status: 'done' })}>Move to Done</DropdownMenuItem>
@@ -449,7 +599,7 @@ export const LogisticsManager: React.FC<LogisticsManagerProps> = ({
             >
               <div className="space-y-3">
                 {itinerary.map((item) => (
-                  <SortableItineraryItem key={item.id} item={item} onDelete={onDeleteItineraryItem} />
+                  <SortableItineraryItem key={item.id} item={item} onDelete={onDeleteItineraryItem} onEdit={setEditingItinerary} />
                 ))}
               </div>
             </SortableContext>

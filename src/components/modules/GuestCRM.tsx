@@ -35,7 +35,8 @@ import {
   Mail,
   Plus,
   X,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -85,7 +86,12 @@ interface GuestCRMProps {
   refreshData: () => void;
 }
 
-const COLORS = ['#18181b', '#71717a', '#d4d4d8', '#f4f4f5'];
+const COLORS = [
+  '#18181b', // Zinc 900
+  '#c5a880', // Champagne Gold
+  '#8a9a86', // Sage Green
+  '#e2c2c6', // Blush Pink
+];
 
 export const GuestCRM: React.FC<GuestCRMProps> = ({
   guests,
@@ -98,19 +104,22 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [newGuest, setNewGuest] = useState({
     name: '',
     email: '',
     phone: '',
     party_size: 1,
-    address: ''
+    address: '',
+    menu_choice: 'none',
+    rsvp_status: 'pending' as 'pending' | 'accepted' | 'declined'
   });
 
   const filteredGuests = useMemo(() => {
     return guests.filter(guest => {
       const matchesSearch = 
-        guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guest.email.toLowerCase().includes(searchTerm.toLowerCase());
+        (guest.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (guest.email || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || guest.rsvp_status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -151,22 +160,66 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
       .from('guests')
       .insert([{
         ...newGuest,
-        user_id: userId,
-        rsvp_status: 'pending',
-        menu_choice: 'none',
+        couple_id: userId,
+        rsvp_status: newGuest.rsvp_status,
         save_the_date_sent: false,
         invite_sent: false
       }])
       .select();
 
     if (error) {
-      toast.error('Failed to add guest');
+      console.error('Supabase Error adding guest:', error);
+      toast.error('Failed to add guest: ' + error.message);
     } else {
       toast.success('Guest added');
       setIsAddDialogOpen(false);
-      setNewGuest({ name: '', email: '', phone: '', party_size: 1, address: '' });
+      setNewGuest({ name: '', email: '', phone: '', party_size: 1, address: '', menu_choice: 'none' });
       refreshData();
     }
+  };
+
+  const handleEditGuest = () => {
+    if (!editingGuest || !editingGuest.name) {
+      toast.error('Please enter a guest name');
+      return;
+    }
+    
+    onUpdateGuest(editingGuest.id, {
+      name: editingGuest.name,
+      email: editingGuest.email,
+      phone: editingGuest.phone,
+      party_size: editingGuest.party_size,
+      address: editingGuest.address,
+      menu_choice: editingGuest.menu_choice,
+      rsvp_status: editingGuest.rsvp_status
+    });
+    
+    toast.success('Guest updated');
+    setEditingGuest(null);
+  };
+
+  const handleExport = () => {
+    if (filteredGuests.length === 0) {
+      toast.error('No guests to export');
+      return;
+    }
+    
+    const headers = ['Name,Email,Phone,RSVP Status,Party Size,Table,Menu Choice'];
+    const rows = filteredGuests.map(g => 
+      `"${g.name || ''}","${g.email || ''}","${g.phone || ''}","${g.rsvp_status}","${g.party_size || 1}","${g.table_number || ''}","${g.menu_choice || 'none'}"`
+    );
+    const csvContent = headers.concat(rows).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "guest-list.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Export downloaded!');
   };
 
   return (
@@ -198,61 +251,44 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
           <CardHeader>
             <CardTitle className="text-sm font-medium text-zinc-500">RSVP Status</CardTitle>
           </CardHeader>
-          <CardContent className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={rsvpStats}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {rsvpStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="flex-1 rounded-3xl border-none bg-zinc-50 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-500">Menu Choices</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={menuStats}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
-                <YAxis hide />
-                <Tooltip cursor={{fill: 'transparent'}} />
-                <Bar dataKey="count" fill="#18181b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="w-full rounded-3xl border-none bg-zinc-900 p-6 text-white shadow-lg lg:w-80">
-          <div className="flex h-full flex-col justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">RSVP Portal</h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Guests can RSVP using this unique code on the portal.
-              </p>
-              <div className="mt-6 flex items-center justify-center rounded-2xl bg-zinc-800 p-4 font-mono text-3xl font-bold tracking-widest">
-                {accessCode}
+          <CardContent className="flex flex-col h-[320px]">
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={rsvpStats}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {rsvpStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-auto grid grid-cols-4 gap-2 text-center border-t border-zinc-100 pt-4">
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-zinc-900">{guests.length}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Total</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-emerald-500">{guests.filter(g => g.rsvp_status === 'accepted').length}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Accepted</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-red-500">{guests.filter(g => g.rsvp_status === 'declined').length}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Declined</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-orange-400">{guests.filter(g => g.rsvp_status === 'pending').length}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Pending</span>
               </div>
             </div>
-            <Button 
-              onClick={handleSharePortal}
-              className="mt-6 w-full bg-white text-zinc-900 hover:bg-zinc-100"
-            >
-              <Share2 className="mr-2 h-4 w-4" />
-              Share RSVP Portal
-            </Button>
-          </div>
+          </CardContent>
         </Card>
       </div>
 
@@ -265,7 +301,7 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
               <CardDescription>Manage your wedding guests and their preferences.</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl">
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExport}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
@@ -329,10 +365,126 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
                         className="rounded-xl"
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Menu Choice</Label>
+                          <select 
+                            className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900"
+                            value={newGuest.menu_choice}
+                            onChange={(e) => setNewGuest({ ...newGuest, menu_choice: e.target.value })}
+                          >
+                            <option value="none">None</option>
+                            <option value="beef">Beef</option>
+                            <option value="chicken">Chicken</option>
+                            <option value="fish">Fish</option>
+                            <option value="veg">Vegetarian</option>
+                          </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>RSVP Status</Label>
+                          <select 
+                            className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900"
+                            value={newGuest.rsvp_status}
+                            onChange={(e) => setNewGuest({ ...newGuest, rsvp_status: e.target.value as any })}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="declined">Declined</option>
+                          </select>
+                      </div>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
                     <Button onClick={handleAddGuest} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Add Guest</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={!!editingGuest} onOpenChange={(open) => !open && setEditingGuest(null)}>
+                <DialogContent className="rounded-3xl">
+                  <DialogHeader>
+                    <DialogTitle className="font-serif italic text-2xl">Edit Guest</DialogTitle>
+                  </DialogHeader>
+                  {editingGuest && (
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Full Name</Label>
+                        <Input 
+                          value={editingGuest.name}
+                          onChange={(e) => setEditingGuest({ ...editingGuest, name: e.target.value })}
+                          className="rounded-xl"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Email</Label>
+                          <Input 
+                            type="email" 
+                            value={editingGuest.email || ''}
+                            onChange={(e) => setEditingGuest({ ...editingGuest, email: e.target.value })}
+                            className="rounded-xl"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Phone</Label>
+                          <Input 
+                            value={editingGuest.phone || ''}
+                            onChange={(e) => setEditingGuest({ ...editingGuest, phone: e.target.value })}
+                            className="rounded-xl"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Party Size</Label>
+                        <Input 
+                          type="number" 
+                          value={editingGuest.party_size === 0 ? '' : editingGuest.party_size}
+                          onChange={(e) => setEditingGuest({ ...editingGuest, party_size: Number(e.target.value) })}
+                          className="rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address</Label>
+                        <Input 
+                          value={editingGuest.address || ''}
+                          onChange={(e) => setEditingGuest({ ...editingGuest, address: e.target.value })}
+                          className="rounded-xl"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Menu Choice</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900"
+                              value={editingGuest.menu_choice}
+                              onChange={(e) => setEditingGuest({ ...editingGuest, menu_choice: e.target.value as any })}
+                            >
+                              <option value="none">None</option>
+                              <option value="beef">Beef</option>
+                              <option value="chicken">Chicken</option>
+                              <option value="fish">Fish</option>
+                              <option value="veg">Vegetarian</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>RSVP Status</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900"
+                              value={editingGuest.rsvp_status}
+                              onChange={(e) => setEditingGuest({ ...editingGuest, rsvp_status: e.target.value as any })}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="accepted">Accepted</option>
+                              <option value="declined">Declined</option>
+                            </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditingGuest(null)} className="rounded-xl">Cancel</Button>
+                    <Button onClick={handleEditGuest} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -349,10 +501,20 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl border-zinc-200">
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl border-zinc-200">
+                    <Filter className="mr-2 h-4 w-4" />
+                    {statusFilter === 'all' ? 'Filter' : `Status: ${statusFilter}`}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-xl">
+                  <DropdownMenuItem onClick={() => setStatusFilter('all')}>All Guests</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('pending')}>Pending</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('accepted')}>Accepted</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('declined')}>Declined</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>
@@ -364,10 +526,7 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
                   <TableHead className="w-[200px] font-medium">Guest Name</TableHead>
                   <TableHead className="font-medium">Contact</TableHead>
                   <TableHead className="font-medium">RSVP Status</TableHead>
-                  <TableHead className="font-medium">Save Date</TableHead>
-                  <TableHead className="font-medium">Invite</TableHead>
                   <TableHead className="font-medium">Party</TableHead>
-                  <TableHead className="font-medium">Table</TableHead>
                   <TableHead className="font-medium">Menu</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -396,35 +555,27 @@ export const GuestCRM: React.FC<GuestCRMProps> = ({
                         {guest.rsvp_status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Switch 
-                        checked={guest.save_the_date_sent} 
-                        onCheckedChange={(checked) => onUpdateGuest(guest.id, { save_the_date_sent: checked })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Switch 
-                        checked={guest.invite_sent} 
-                        onCheckedChange={(checked) => onUpdateGuest(guest.id, { invite_sent: checked })}
-                      />
-                    </TableCell>
                     <TableCell className="font-mono text-xs">{guest.party_size}</TableCell>
-                    <TableCell className="font-mono text-xs">{guest.table_number || '-'}</TableCell>
                     <TableCell className="capitalize text-xs">{guest.menu_choice}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>} />
-                        <DropdownMenuContent align="end" className="rounded-xl">
-                          <DropdownMenuItem onClick={() => onUpdateGuest(guest.id, { rsvp_status: 'accepted' })}>Mark Accepted</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onUpdateGuest(guest.id, { rsvp_status: 'declined' })}>Mark Declined</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={() => onDeleteGuest(guest.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                          onClick={() => setEditingGuest(guest)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => onDeleteGuest(guest.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

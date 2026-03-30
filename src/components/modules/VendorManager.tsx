@@ -24,7 +24,8 @@ import {
   MapPin,
   Flower2,
   Trash2,
-  Layout
+  Layout,
+  Edit2
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -94,6 +95,7 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
   refreshData
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [newVendor, setNewVendor] = useState({
     name: '',
     category: 'Other',
@@ -137,6 +139,28 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
       setNewVendor({ name: '', category: 'Other', email: '', phone: '', website: '', total_cost: 0, deposit_paid: 0 });
       refreshData();
     }
+  };
+
+  const handleEditVendor = () => {
+    if (!editingVendor) return;
+    if (!editingVendor.name) {
+      toast.error('Please enter a vendor name');
+      return;
+    }
+    
+    onUpdateVendor(editingVendor.id, {
+      name: editingVendor.name,
+      category: editingVendor.category,
+      email: editingVendor.email,
+      phone: editingVendor.phone,
+      website: editingVendor.website,
+      total_cost: editingVendor.total_cost,
+      deposit_paid: editingVendor.deposit_paid,
+      balance_due: editingVendor.total_cost - editingVendor.deposit_paid
+    });
+    
+    toast.success('Vendor updated');
+    setEditingVendor(null);
   };
 
   return (
@@ -241,6 +265,93 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!editingVendor} onOpenChange={(open) => !open && setEditingVendor(null)}>
+          <DialogContent className="rounded-3xl max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-serif italic text-2xl">Edit Vendor</DialogTitle>
+            </DialogHeader>
+            {editingVendor && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Vendor Name</Label>
+                  <Input 
+                    value={editingVendor.name}
+                    onChange={(e) => setEditingVendor({ ...editingVendor, name: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select 
+                    value={editingVendor.category} 
+                    onValueChange={(value) => setEditingVendor({ ...editingVendor, category: value })}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {VENDOR_CATEGORIES.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input 
+                      type="email" 
+                      value={editingVendor.email}
+                      onChange={(e) => setEditingVendor({ ...editingVendor, email: e.target.value })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input 
+                      value={editingVendor.phone}
+                      onChange={(e) => setEditingVendor({ ...editingVendor, phone: e.target.value })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Website</Label>
+                  <Input 
+                    value={editingVendor.website}
+                    onChange={(e) => setEditingVendor({ ...editingVendor, website: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Total Cost ({currency})</Label>
+                    <Input 
+                      type="number" 
+                      value={editingVendor.total_cost === 0 ? '' : editingVendor.total_cost}
+                      onChange={(e) => setEditingVendor({ ...editingVendor, total_cost: Number(e.target.value) })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Deposit Paid ({currency})</Label>
+                    <Input 
+                      type="number" 
+                      value={editingVendor.deposit_paid === 0 ? '' : editingVendor.deposit_paid}
+                      onChange={(e) => setEditingVendor({ ...editingVendor, deposit_paid: Number(e.target.value) })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingVendor(null)} className="rounded-xl">Cancel</Button>
+              <Button onClick={handleEditVendor} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -257,6 +368,14 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
                       Booked
                     </Badge>
                   )}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                    onClick={() => setEditingVendor(vendor)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
