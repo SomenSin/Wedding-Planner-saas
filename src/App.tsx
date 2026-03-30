@@ -358,16 +358,40 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
     if (insertError) throw insertError;
   };
 
-  const menuItems = [
-    { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'guests', label: 'Guest CRM', icon: Users },
-    { id: 'budget', label: 'Financial Hub', icon: DollarSign },
-    { id: 'registry', label: 'Registry & Gifts', icon: Gift },
-    { id: 'logistics', label: 'Logistics', icon: Truck },
-    { id: 'vendors', label: 'Vendors', icon: Calendar },
-    { id: 'drinks', label: 'Drink Calc', icon: Wine },
-    { id: 'checklists', label: 'Checklists', icon: CheckSquare },
-  ];
+  // Static icon/label map for each module name
+  const MODULE_ICON_MAP: Record<string, { icon: any; label: string }> = {
+    overview:   { icon: LayoutDashboard, label: 'Dashboard' },
+    guests:     { icon: Users,           label: 'Guest CRM' },
+    budget:     { icon: DollarSign,      label: 'Financial Hub' },
+    registry:   { icon: Gift,            label: 'Registry & Gifts' },
+    logistics:  { icon: Truck,           label: 'Logistics' },
+    vendors:    { icon: Calendar,        label: 'Vendors' },
+    drinks:     { icon: Wine,            label: 'Drink Calc' },
+    checklists: { icon: CheckSquare,     label: 'Checklists' },
+    support:    { icon: MessageSquare,   label: 'Support' },
+  };
+
+  // Dynamic menu — ordered and filtered by what's in the DB
+  const menuItems = modules.length > 0
+    ? modules
+        .filter(m => m.enabled)                         // only show enabled modules
+        .sort((a, b) => a.order - b.order)              // in admin-defined order
+        .map(m => ({
+          id: m.name,
+          label: m.label || MODULE_ICON_MAP[m.name]?.label || m.name,
+          icon: MODULE_ICON_MAP[m.name]?.icon || LayoutDashboard,
+        }))
+    : [
+        // Fallback when DB hasn't been seeded yet
+        { id: 'overview',   label: 'Dashboard',         icon: LayoutDashboard },
+        { id: 'guests',     label: 'Guest CRM',          icon: Users },
+        { id: 'budget',     label: 'Financial Hub',      icon: DollarSign },
+        { id: 'registry',   label: 'Registry & Gifts',   icon: Gift },
+        { id: 'logistics',  label: 'Logistics',          icon: Truck },
+        { id: 'vendors',    label: 'Vendors',            icon: Calendar },
+        { id: 'drinks',     label: 'Drink Calc',         icon: Wine },
+        { id: 'checklists', label: 'Checklists',         icon: CheckSquare },
+      ];
 
   if (isLoading) {
     return (
@@ -611,7 +635,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
 
               {activeModuleId === 'admin' && isAdmin && (
                 <div className="p-8">
-                  <AdminDashboard />
+                  <AdminDashboard onModulesSaved={fetchData} />
                 </div>
               )}
             </motion.div>

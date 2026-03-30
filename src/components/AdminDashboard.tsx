@@ -92,7 +92,9 @@ interface AccessCode {
 
 interface DashboardModule {
   id: string;
-  title: string;
+  name: string;
+  label: string;
+  title: string;   // display convenience field (= label)
   enabled: boolean;
   order: number;
   widgets: DashboardWidget[];
@@ -169,8 +171,10 @@ const SortableModuleItem = ({ module, onToggle, onDelete, onEdit }: any) => {
 
 // --- Main Component ---
 
-export const AdminDashboard: React.FC = () => {
+export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onModulesSaved }) => {
   const [activeTab, setActiveTab] = useState('users');
+  const [modulesDirty, setModulesDirty] = useState(false);
+  const [isSavingModules, setIsSavingModules] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [accessCodes, setAccessCodes] = useState<AccessCode[]>([]);
   const [modules, setModules] = useState<DashboardModule[]>([]);
@@ -202,7 +206,7 @@ export const AdminDashboard: React.FC = () => {
 
       if (pRes.data) setProfiles(pRes.data as Profile[]);
       if (aRes.data) setAccessCodes(aRes.data as AccessCode[]);
-      if (mRes.data) setModules(mRes.data as DashboardModule[]);
+      if (mRes.data) setModules(mRes.data.map((m: any) => ({ ...m, title: m.label || m.name, widgets: m.widgets || [] })) as DashboardModule[]);
       if (fRes.data) setFeedback(fRes.data as Feedback[]);
     } catch (err) {
       console.error('Admin fetch error:', err);
@@ -279,28 +283,42 @@ export const AdminDashboard: React.FC = () => {
 
   // --- Module Builder Actions ---
 
-  const handleDragEnd = async (event: any) => {
+  const handleDragEnd = (event: any) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = modules.findIndex((m) => m.id === active.id);
       const newIndex = modules.findIndex((m) => m.id === over.id);
       const newModules: DashboardModule[] = arrayMove(modules, oldIndex, newIndex);
-      
-      // Update local state
+      // Only update local state — DB save happens on Save button
       setModules(newModules);
-      
-      // Update DB order
-      const updates = newModules.map((m, idx) => ({ id: m.id, order: idx }));
-      const { error } = await supabase.from('dashboard_modules').upsert(updates);
-      if (error) toast.error('Failed to sync module order');
+      setModulesDirty(true);
     }
   };
 
-  const toggleModule = async (id: string, enabled: boolean) => {
-    const { error } = await supabase.from('dashboard_modules').update({ enabled }).eq('id', id);
-    if (error) toast.error(error.message);
-    else {
-      setModules(modules.map(m => m.id === id ? { ...m, enabled } : m));
+  const toggleModule = (id: string, enabled: boolean) => {
+    // Only update local state — DB save happens on Save button
+    setModules(modules.map(m => m.id === id ? { ...m, enabled } : m));
+    setModulesDirty(true);
+  };
+
+  const saveAllModules = async () => {
+    setIsSavingModules(true);
+    const updates = modules.map((m, idx) => ({
+      id: m.id,
+      name: m.name,
+      label: m.label,
+      enabled: m.enabled,
+      order: idx,
+    }));
+    const { error } = await supabase.from('dashboard_modules').upsert(updates);
+    setIsSavingModules(false);
+    if (error) {
+      toast.error('Failed to save module changes');
+    } else {
+      setModulesDirty(false);
+      toast.success('All module changes saved!');
+      // Tell the parent (App.tsx) to re-fetch modules so the sidebar updates instantly
+      onModulesSaved?.();
     }
   };
 
@@ -319,33 +337,42 @@ export const AdminDashboard: React.FC = () => {
 
   const seedInitialModules = async () => {
     const initialModules = [
-      { id: 'overview', title: 'Dashboard Home', enabled: true, order: 0, widgets: [] },
-      { id: 'guests', title: 'Guest CRM', enabled: true, order: 1, widgets: [] },
-      { id: 'budget', title: 'Financial Hub', enabled: true, order: 2, widgets: [] },
-      { id: 'registry', title: 'Registry & Gifts', enabled: true, order: 3, widgets: [] },
-      { id: 'logistics', title: 'Logistics', enabled: true, order: 4, widgets: [] },
-      { id: 'vendors', title: 'Vendor Management', enabled: true, order: 5, widgets: [] },
-      { id: 'drinks', title: 'Drink Calculator', enabled: true, order: 6, widgets: [] },
-      { id: 'checklists', title: 'Master Checklists', enabled: true, order: 7, widgets: [] },
-      { id: 'support', title: 'Feedback & Support', enabled: true, order: 8, widgets: [] },
+      { name: 'overview',   label: 'Dashboard Home',      enabled: true, order: 0 },
+      { name: 'guests',     label: 'Guest CRM',           enabled: true, order: 1 },
+      { name: 'budget',     label: 'Financial Hub',       enabled: true, order: 2 },
+      { name: 'registry',   label: 'Registry & Gifts',    enabled: true, order: 3 },
+      { name: 'logistics',  label: 'Logistics',           enabled: true, order: 4 },
+      { name: 'vendors',    label: 'Vendor Management',   enabled: true, order: 5 },
+      { name: 'drinks',     label: 'Drink Calculator',    enabled: true, order: 6 },
+      { name: 'checklists', label: 'Master Checklists',   enabled: true, order: 7 },
+      { name: 'support',    label: 'Feedback & Support',  enabled: true, order: 8 },
     ];
 
-    const { error } = await supabase.from('dashboard_modules').insert(initialModules);
+    const { data, error } = await supabase.from('dashboard_modules').insert(initialModules).select();
     if (error) toast.error(error.message);
-    else {
-      setModules(initialModules as any);
-      toast.success('Initial modules seeded');
+    else if (data) {
+      setModules(data.map((m: any) => ({ ...m, title: m.label || m.name, widgets: [] })) as DashboardModule[]);
+      toast.success('All modules seeded successfully!');
     }
   };
 
   const saveModule = async (module: DashboardModule) => {
-    const { data, error } = await supabase.from('dashboard_modules').upsert(module).select();
+    // Only persist fields that exist in the DB schema
+    const payload = {
+      id: module.id,
+      name: module.name || module.title,
+      label: module.title,
+      enabled: module.enabled,
+      order: module.order
+    };
+    const { data, error } = await supabase.from('dashboard_modules').upsert(payload).select();
     if (error) toast.error(error.message);
     else if (data) {
+      const saved: DashboardModule = { ...data[0], title: data[0].label || data[0].name, widgets: module.widgets || [] };
       setModules(prev => {
         const exists = prev.find(m => m.id === module.id);
-        if (exists) return prev.map(m => m.id === module.id ? data[0] as DashboardModule : m);
-        return [...prev, data[0] as DashboardModule];
+        if (exists) return prev.map(m => m.id === module.id ? saved : m);
+        return [...prev, saved];
       });
       setEditingModule(null);
       toast.success('Module saved');
@@ -630,24 +657,54 @@ export const AdminDashboard: React.FC = () => {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <div className="flex justify-end gap-4">
-                {modules.length === 0 && (
-                  <Button variant="outline" className="rounded-none border-stone-200" onClick={seedInitialModules}>
-                    Seed Initial Modules
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                  {modulesDirty && (
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1">
+                      Unsaved changes
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {modules.length === 0 && (
+                    <Button variant="outline" className="rounded-none border-stone-200" onClick={seedInitialModules}>
+                      Seed Initial Modules
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="rounded-none border-stone-200"
+                    onClick={() => {
+                      const newModule: DashboardModule = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: 'new_module',
+                        label: 'New Module',
+                        title: 'New Module',
+                        enabled: true,
+                        order: modules.length,
+                        widgets: []
+                      };
+                      setEditingModule(newModule);
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Create New Module
                   </Button>
-                )}
-                <Button className="rounded-none bg-black hover:bg-black/90" onClick={() => {
-                  const newModule: DashboardModule = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    title: 'New Module',
-                    enabled: true,
-                    order: modules.length,
-                    widgets: []
-                  };
-                  setEditingModule(newModule);
-                }}>
-                  <Plus className="mr-2 h-4 w-4" /> Create New Module
-                </Button>
+                  <Button
+                    className={`rounded-none px-6 ${
+                      modulesDirty
+                        ? 'bg-black hover:bg-black/90 text-white'
+                        : 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                    }`}
+                    disabled={!modulesDirty || isSavingModules}
+                    onClick={saveAllModules}
+                  >
+                    {isSavingModules ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <DndContext 
@@ -805,7 +862,7 @@ export const AdminDashboard: React.FC = () => {
                       }`}>
                         {item.status}
                       </Badge>
-                      <span className="text-[9px] font-mono text-stone-400">
+                      <span className="text-[9px] font-mono text-stone-400 shrink-0 text-right ml-2 whitespace-nowrap">
                         {new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(item.created_at))}
                       </span>
                     </div>
@@ -814,7 +871,7 @@ export const AdminDashboard: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 space-y-4">
-                    <p className="text-sm leading-relaxed text-stone-600">
+                    <p className="text-sm leading-relaxed text-stone-600 whitespace-pre-wrap">
                       {item.content}
                     </p>
                     

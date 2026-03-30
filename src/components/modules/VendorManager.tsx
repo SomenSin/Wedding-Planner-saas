@@ -124,15 +124,23 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
     const { error } = await supabase
       .from('vendors')
       .insert([{
-        ...newVendor,
-        user_id: userId,
+        name: newVendor.name,
+        category: newVendor.category,
+        contact_email: newVendor.email,
+        contact_phone: newVendor.phone,
+        website: newVendor.website,
+        cost: newVendor.total_cost,
+        total_cost: newVendor.total_cost,
+        deposit_paid: newVendor.deposit_paid,
+        balance_due: newVendor.total_cost - newVendor.deposit_paid,
         quote_requested: false,
         booked: false,
-        balance_due: newVendor.total_cost - newVendor.deposit_paid
+        status: 'contacted',
+        couple_id: userId,
       }]);
 
     if (error) {
-      toast.error('Failed to add vendor');
+      toast.error('Failed to add vendor: ' + error.message);
     } else {
       toast.success('Vendor added');
       setIsAddDialogOpen(false);
