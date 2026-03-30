@@ -8,7 +8,7 @@ import {
 } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { supabase } from '@/lib/supabase';
-import { FeedbackFAB } from '@/components/FeedbackFAB';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -323,12 +323,31 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
     
     const { data: { user } } = await supabase.auth.getUser();
     
+    let imageUrls: string[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('feedback-images')
+          .upload(fileName, file);
+
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage
+            .from('feedback-images')
+            .getPublicUrl(uploadData.path);
+          imageUrls.push(publicUrlData.publicUrl);
+        }
+      }
+    }
+
     // Map to schema: content, user_id, type
     const payload = {
-      content: `${feedbackData.subject}: ${feedbackData.content}`,
+      content: `${feedbackData.subject}\n\n${feedbackData.content}`,
       user_id: user?.id,
       type: feedbackData.category === 'bug' ? 'bug' : feedbackData.category === 'feature' ? 'feature' : 'other',
-      status: 'new'
+      status: 'new',
+      image_url: imageUrls.length > 0 ? imageUrls.join(',') : null
     };
 
     const { data: insertedData, error: insertError } = await supabase
@@ -337,10 +356,6 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
       .select();
 
     if (insertError) throw insertError;
-
-    if (files && files.length > 0 && insertedData?.[0]) {
-      console.log('Files to upload for feedback:', files);
-    }
   };
 
   const menuItems = [
@@ -608,7 +623,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
         isOpen={isOnboardingOpen} 
         onSubmit={handleOnboardingSubmit} 
       />
-      <FeedbackFAB />
+
     </div>
   );
 };
