@@ -25,8 +25,8 @@ export const LoginSplit: React.FC = () => {
         const { data: codeData, error: codeError } = await supabase
           .from('access_codes')
           .select('*')
-          .eq('code', accessCode)
-          .eq('status', 'active')
+          .ilike('code', accessCode)
+          .eq('is_active', true)
           .single();
 
         if (codeError || !codeData) {

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 CREATE TABLE IF NOT EXISTS public.access_codes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   linked_user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-  code VARCHAR(6) UNIQUE NOT NULL,
+  code VARCHAR(50) UNIQUE NOT NULL,
   event_name TEXT NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()

@@ -806,7 +806,7 @@ export const AdminDashboard: React.FC = () => {
                         {item.status}
                       </Badge>
                       <span className="text-[9px] font-mono text-stone-400">
-                        {new Date(item.created_at).toLocaleDateString()}
+                        {new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(item.created_at))}
                       </span>
                     </div>
                     <CardTitle className="text-xs font-bold uppercase tracking-widest text-stone-500">
@@ -819,27 +819,39 @@ export const AdminDashboard: React.FC = () => {
                     </p>
                     
                     {item.image_url && (
-                      <Dialog>
-                        <DialogTrigger render={<div className="relative aspect-video bg-stone-100 border border-stone-200 cursor-zoom-in group-hover:border-black transition-all overflow-hidden" />}>
-                          <img 
-                            src={item.image_url} 
-                            alt="Feedback attachment" 
-                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                            <Eye className="text-white h-6 w-6" />
-                          </div>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none">
-                          <img 
-                            src={item.image_url} 
-                            alt="Feedback attachment full" 
-                            className="w-full h-auto"
-                            referrerPolicy="no-referrer"
-                          />
-                        </DialogContent>
-                      </Dialog>
+                      <div className="grid grid-cols-2 gap-2">
+                        {item.image_url.split(',').map((rawUrl, idx) => {
+                          const url = rawUrl.trim().startsWith('http') 
+                            ? rawUrl.trim() 
+                            : supabase.storage.from('feedback-images').getPublicUrl(rawUrl.trim()).data.publicUrl;
+                          
+                          return (
+                            <Dialog key={idx}>
+                              <DialogTrigger render={
+                                <div className="relative aspect-video bg-stone-100 border border-stone-200 cursor-zoom-in group-hover:border-black transition-all overflow-hidden">
+                                  <img 
+                                    src={url} 
+                                    alt={`Feedback attachment ${idx + 1}`} 
+                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                    <Eye className="text-white h-6 w-6" />
+                                  </div>
+                                </div>
+                              } />
+                              <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none">
+                                <img 
+                                  src={url} 
+                                  alt={`Feedback attachment ${idx + 1} full`} 
+                                  className="w-full h-auto"
+                                  referrerPolicy="no-referrer"
+                                />
+                              </DialogContent>
+                            </Dialog>
+                          );
+                        })}
+                      </div>
                     )}
                   </CardContent>
                   <div className="p-4 border-t border-stone-100 flex justify-between gap-2">

@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabase';
 export const FeedbackFAB: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -30,24 +30,31 @@ export const FeedbackFAB: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      let imageUrl = null;
+      let imageUrls: string[] = [];
 
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { data, error: uploadError } = await supabase.storage
-          .from('feedback-images')
-          .upload(fileName, file);
+      if (files.length > 0) {
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const { data, error: uploadError } = await supabase.storage
+            .from('feedback-images')
+            .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
-        imageUrl = data.path;
+          if (uploadError) throw uploadError;
+          
+          const { data: publicUrlData } = supabase.storage
+            .from('feedback-images')
+            .getPublicUrl(data.path);
+            
+          imageUrls.push(publicUrlData.publicUrl);
+        }
       }
 
       const { data: { user } } = await supabase.auth.getUser();
 
       const { error } = await supabase.from('user_feedback').insert({
         content,
-        image_url: imageUrl,
+        image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
         user_id: user?.id,
         type: 'feature',
       });
@@ -56,7 +63,7 @@ export const FeedbackFAB: React.FC = () => {
 
       toast.success('Feedback submitted successfully!');
       setContent('');
-      setFile(null);
+      setFiles([]);
       setIsOpen(false);
     } catch (error: any) {
       console.error('Feedback error:', error);
@@ -96,8 +103,8 @@ export const FeedbackFAB: React.FC = () => {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="image">Attach Image (Optional)</Label>
-              <div className="flex items-center gap-2">
+              <Label htmlFor="image">Attach Images (Optional)</Label>
+              <div className="flex flex-col gap-2">
                 <Button
                   variant="outline"
                   type="button"
@@ -105,15 +112,25 @@ export const FeedbackFAB: React.FC = () => {
                   className="w-full"
                 >
                   <ImageIcon className="mr-2 h-4 w-4" />
-                  {file ? file.name : 'Choose Image'}
+                  {files.length > 0 ? `${files.length} images selected` : 'Choose Images'}
                 </Button>
                 <input
                   id="image-upload"
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={(e) => setFiles(Array.from(e.target.files || []))}
                 />
+                {files.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {files.map((f, i) => (
+                      <div key={i} className="text-xs bg-stone-100 px-2 py-1 rounded truncate max-w-[120px]">
+                        {f.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
