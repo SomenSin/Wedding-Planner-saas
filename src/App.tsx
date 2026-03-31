@@ -835,7 +835,7 @@ export default function App() {
   }
 
   return (
-    <Router>
+    <Router basename="/Wedding-Planner-saas">
       <Routes>
         {/* Public Routes */}
         <Route 
