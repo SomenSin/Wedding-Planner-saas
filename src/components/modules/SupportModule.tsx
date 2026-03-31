@@ -45,10 +45,38 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  // Generate and manage previews
+  React.useEffect(() => {
+    // Revoke old URLs to prevent memory leaks
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    
+    // Create new preview URLs for current files
+    const newUrls = files.map(file => URL.createObjectURL(file));
+    setPreviewUrls(newUrls);
+
+    // Cleanup on unmount or when files change
+    return () => newUrls.forEach(url => URL.revokeObjectURL(url));
+  }, [files]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      const selectedFiles = Array.from(e.target.files);
+      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+      
+      const oversized = selectedFiles.some(f => f.size > MAX_SIZE);
+      if (oversized) {
+        toast.error('File too large', {
+          description: 'Each image must be smaller than 5MB.'
+        });
+        return;
+      }
+
+      setFiles(prev => [...prev, ...selectedFiles]);
+      
+      // Reset input value so same file can be selected again if mistakenly removed
+      e.target.value = '';
     }
   };
 
@@ -168,12 +196,17 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Description</Label>
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Description</Label>
+                  <span className={`text-[10px] font-bold ${content.length >= 1000 ? 'text-red-500' : 'text-zinc-400'}`}>
+                    {content.length} / 1000
+                  </span>
+                </div>
                 <Textarea 
                   placeholder="Tell us more details..." 
-                  className="min-h-[150px] rounded-2xl border-zinc-100 bg-zinc-50 p-4"
+                  className="min-h-[150px] rounded-2xl border-zinc-100 bg-zinc-50 p-4 transition-all focus:bg-white"
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => setContent(e.target.value.slice(0, 1000))}
                   required
                 />
               </div>
@@ -202,16 +235,27 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
                 {files.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-3">
                     {files.map((file, i) => (
-                      <div key={i} className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-zinc-100">
-                        <ImageIcon className="h-8 w-8 text-zinc-300" />
+                      <div key={i} className="group relative h-20 w-32 overflow-hidden rounded-2xl border border-zinc-100 bg-zinc-50">
+                        {previewUrls[i] ? (
+                          <img 
+                            src={previewUrls[i]} 
+                            alt={`Preview ${i}`} 
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <ImageIcon className="h-6 w-6 text-zinc-300" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                         <button 
                           type="button"
                           onClick={() => removeFile(i)}
-                          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-lg opacity-0 transition-opacity group-hover:opacity-100 z-20"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
-                        <div className="absolute bottom-0 left-0 right-0 bg-zinc-900/50 p-1 text-[8px] text-white truncate">
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1 px-2 text-[8px] text-white truncate font-medium">
                           {file.name}
                         </div>
                       </div>

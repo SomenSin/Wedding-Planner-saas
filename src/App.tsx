@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner';
 import { useStore } from '@/store/useStore';
 
-import { Heart, Loader2, LayoutDashboard, Users, DollarSign, Gift, Calendar, Truck, Wine, CheckSquare, MessageSquare, Menu, X, LogOut, Camera, Flower2, Shield, Layout } from 'lucide-react';
+import { Heart, Loader2, LayoutDashboard, Users, DollarSign, Gift, Calendar, Clock, Wine, CheckSquare, MessageSquare, Menu, X, LogOut, Camera, Flower2, Shield, Layout } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { LoginSplit } from '@/components/LoginSplit';
 import { AdminDashboard } from '@/components/AdminDashboard';
@@ -166,6 +166,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
   const [tasks, setTasks] = useState<any[]>([]);
   const [itinerary, setItinerary] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
+  const [drinks, setDrinks] = useState<any[]>([]);
   const [checklistCategories, setChecklistCategories] = useState<any[]>([]);
   const [accessCode, setAccessCode] = useState('000000');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -200,7 +201,8 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
       iRes, 
       vRes, 
       clRes,
-      acRes
+      acRes,
+      deRes
     ] = await Promise.all([
       supabase.from('dashboard_modules').select('*').eq('enabled', true).order('order', { ascending: true }),
       supabase.from('guests').select('*').eq('couple_id', authUser.id),
@@ -209,20 +211,23 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
       supabase.from('logistics_tasks').select('*').eq('couple_id', authUser.id),
       supabase.from('itinerary_items').select('*').eq('couple_id', authUser.id).order('start_time', { ascending: true }),
       supabase.from('vendors').select('*').eq('couple_id', authUser.id),
-      supabase.from('checklist_categories').select('*, checklist_items(*)').eq('user_id', authUser.id),
-      supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle()
+      supabase.from('checklist_categories').select('*, checklist_items(*)').eq('couple_id', authUser.id),
+      supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle(),
+      supabase.from('drink_entries').select('*').eq('couple_id', authUser.id)
     ]);
     
     if (mRes.data) setModules(mRes.data);
     if (gRes.data) {
       setGuests(gRes.data);
-      setGuestCount(gRes.data.length);
+      const totalPeople = gRes.data.reduce((acc: number, g: any) => acc + (g.party_size || 1), 0);
+      setGuestCount(totalPeople);
     }
     if (bRes.data) setBudgetItems(bRes.data);
     if (rRes.data) setRegistryItems(rRes.data);
     if (tRes.data) setTasks(tRes.data);
     if (iRes.data) setItinerary(iRes.data);
     if (vRes.data) setVendors(vRes.data);
+    if (deRes.data) setDrinks(deRes.data);
     if (clRes.data) setChecklistCategories(clRes.data);
     if (acRes.data) setAccessCode(acRes.data.code);
     
@@ -245,7 +250,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
     if (error) {
       toast.error(error.message);
     } else {
-      setWeddingDetails(details);
+      await fetchData(); // Full refresh to sync dashboard
       setIsOnboardingOpen(false);
       toast.success('Wedding details saved!');
     }
@@ -263,7 +268,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
     if (error) {
       toast.error(error.message);
     } else {
-      setWeddingDetails(details);
+      await fetchData(); // Full refresh to sync dashboard
       toast.success('Wedding details updated!');
     }
   };
@@ -290,12 +295,18 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
 
   const handleUpdateGuest = async (id: string, updates: any) => {
     const { error } = await supabase.from('guests').update(updates).eq('id', id);
-    if (!error) setGuests(guests.map(g => g.id === id ? { ...g, ...updates } : g));
+    if (!error) {
+      await fetchData();
+      toast.success('Guest list updated');
+    }
   };
 
   const handleUpdateBudget = async (id: string, updates: any) => {
     const { error } = await supabase.from('budget_items').update(updates).eq('id', id);
-    if (!error) setBudgetItems(budgetItems.map(b => b.id === id ? { ...b, ...updates } : b));
+    if (!error) {
+      await fetchData();
+      toast.success('Budget item updated');
+    }
   };
 
   const handleUpdateRegistry = async (id: string, updates: any) => {
@@ -326,17 +337,23 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
     let imageUrls: string[] = [];
     if (files && files.length > 0) {
       for (const file of files) {
+        // Use timestamp and random string to ensure unique filenames
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('feedback-images')
           .upload(fileName, file);
 
-        if (!uploadError && uploadData) {
-          const { data: publicUrlData } = supabase.storage
-            .from('feedback-images')
-            .getPublicUrl(uploadData.path);
-          imageUrls.push(publicUrlData.publicUrl);
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
+          continue;
+        }
+
+        if (uploadData) {
+          // Store relative path (Supabase best practice)
+          imageUrls.push(uploadData.path);
         }
       }
     }
@@ -364,7 +381,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
     guests:     { icon: Users,           label: 'Guest CRM' },
     budget:     { icon: DollarSign,      label: 'Financial Hub' },
     registry:   { icon: Gift,            label: 'Registry & Gifts' },
-    logistics:  { icon: Truck,           label: 'Logistics' },
+    logistics:  { icon: Clock,           label: 'Itinerary' },
     vendors:    { icon: Calendar,        label: 'Vendors' },
     drinks:     { icon: Wine,            label: 'Drink Calc' },
     checklists: { icon: CheckSquare,     label: 'Checklists' },
@@ -387,7 +404,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
         { id: 'guests',     label: 'Guest CRM',          icon: Users },
         { id: 'budget',     label: 'Financial Hub',      icon: DollarSign },
         { id: 'registry',   label: 'Registry & Gifts',   icon: Gift },
-        { id: 'logistics',  label: 'Logistics',          icon: Truck },
+        { id: 'logistics',  label: 'Itinerary',          icon: Clock },
         { id: 'vendors',    label: 'Vendors',            icon: Calendar },
         { id: 'drinks',     label: 'Drink Calc',         icon: Wine },
         { id: 'checklists', label: 'Checklists',         icon: CheckSquare },
@@ -507,11 +524,17 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                   weddingDate={weddingDetails.wedding_date}
                   coupleName={weddingDetails.couple_name}
                   partnerName={weddingDetails.partner_name}
-                  guestCount={guests.length}
-                  rsvpsAccepted={guests.filter(g => g.rsvp_status === 'accepted').length}
+                  guestCount={guestCount}
+                  guests={guests}
+                  rsvpsAccepted={guests.filter(g => g.rsvp_status === 'accepted').reduce((acc, g) => acc + (g.party_size || 1), 0)}
                   totalBudget={totalBudget}
                   spentBudget={budgetItems.reduce((sum, i) => sum + i.actual_cost, 0)}
                   upcomingTasks={tasks.filter(t => t.status !== 'done')}
+                  itinerary={itinerary}
+                  registryItems={registryItems}
+                  vendors={vendors}
+                  drinks={drinks}
+                  checklistCategories={checklistCategories}
                   onQuickAction={(action) => setActiveModuleId(action === 'add-guest' ? 'guests' : action === 'log-expense' ? 'budget' : 'logistics')}
                   onUpdateWeddingDetails={handleUpdateWeddingDetails}
                   currency={currency}
@@ -525,7 +548,10 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                   onUpdateGuest={handleUpdateGuest}
                   onDeleteGuest={async (id) => {
                     const { error } = await supabase.from('guests').delete().eq('id', id);
-                    if (!error) setGuests(guests.filter(g => g.id !== id));
+                    if (!error) {
+                      await fetchData();
+                      toast.success('Guest removed');
+                    }
                   }}
                   userId={user?.id || ''}
                   refreshData={fetchData}
@@ -539,7 +565,10 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                   onUpdateItem={handleUpdateBudget}
                   onDeleteItem={async (id) => {
                     const { error } = await supabase.from('budget_items').delete().eq('id', id);
-                    if (!error) setBudgetItems(budgetItems.filter(b => b.id !== id));
+                    if (!error) {
+                      await fetchData();
+                      toast.success('Item removed');
+                    }
                   }}
                   onUpdateTotalBudget={handleUpdateTotalBudget}
                   currency={currency}
@@ -557,7 +586,10 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                   onUpdateItem={handleUpdateRegistry}
                   onDeleteItem={async (id) => {
                     const { error } = await supabase.from('registry_items').delete().eq('id', id);
-                    if (!error) setRegistryItems(registryItems.filter(r => r.id !== id));
+                    if (!error) {
+                      await fetchData();
+                      toast.success('Gift removed');
+                    }
                   }}
                   currency={currency}
                   userId={user?.id || ''}
@@ -574,11 +606,17 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                   onUpdateItinerary={handleUpdateItinerary}
                   onDeleteTask={async (id) => {
                     const { error } = await supabase.from('logistics_tasks').delete().eq('id', id);
-                    if (!error) setTasks(tasks.filter(t => t.id !== id));
+                    if (!error) {
+                      await fetchData();
+                      toast.success('Task removed');
+                    }
                   }}
                   onDeleteItineraryItem={async (id) => {
                     const { error } = await supabase.from('itinerary_items').delete().eq('id', id);
-                    if (!error) setItinerary(itinerary.filter(i => i.id !== id));
+                    if (!error) {
+                      await fetchData();
+                      toast.success('Activity removed');
+                    }
                   }}
                   userId={user?.id || ''}
                   refreshData={fetchData}
@@ -591,7 +629,10 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                   onUpdateVendor={handleUpdateVendor}
                   onDeleteVendor={async (id) => {
                     const { error } = await supabase.from('vendors').delete().eq('id', id);
-                    if (!error) setVendors(vendors.filter(v => v.id !== id));
+                    if (!error) {
+                      await fetchData();
+                      toast.success('Vendor removed');
+                    }
                   }}
                   currency={currency}
                   userId={user?.id || ''}
@@ -600,7 +641,11 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
               )}
 
               {activeModuleId === 'drinks' && (
-                <DrinkCalculator guestCount={guests.length} />
+                <DrinkCalculator
+                  guestCount={guestCount}
+                  userId={user?.id || ''}
+                  refreshData={fetchData}
+                />
               )}
 
               {activeModuleId === 'checklists' && (
@@ -612,17 +657,37 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ is
                     items: cat.checklist_items || []
                   }))}
                   onToggleItem={async (catId, itemId, completed) => {
+                    // 1. Optimistic Update (Immediate UI response)
+                    const originalState = [...checklistCategories];
+                    setChecklistCategories(prev => prev.map(cat => {
+                      if (cat.id !== catId) return cat;
+                      return {
+                        ...cat,
+                        checklist_items: (cat.checklist_items || []).map(item => 
+                          item.id === itemId ? { ...item, completed } : item
+                        )
+                      };
+                    }));
+
+                    // 2. Background Sync
                     const { error } = await supabase
                       .from('checklist_items')
                       .update({ completed })
                       .eq('id', itemId);
                     
-                    if (!error) {
+                    if (error) {
+                      // 3. Rollback on failure
+                      setChecklistCategories(originalState);
+                      toast.error("Failed to sync checklist: " + error.message);
+                    } else {
+                      // 4. Background refresh to ensure consistency (no await)
                       fetchData();
+                      toast.success(completed ? "Task completed" : "Task uncompleted");
                     }
                   }}
                   userId={user?.id || ''}
                   refreshData={fetchData}
+                  isLoading={isLoading}
                 />
               )}
 

@@ -875,7 +875,7 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
                       {item.content}
                     </p>
                     
-                    {item.image_url && (
+                    {item.image_url ? (
                       <div className="grid grid-cols-2 gap-2">
                         {item.image_url.split(',').map((rawUrl, idx) => {
                           const url = rawUrl.trim().startsWith('http') 
@@ -885,15 +885,25 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
                           return (
                             <Dialog key={idx}>
                               <DialogTrigger render={
-                                <div className="relative aspect-video bg-stone-100 border border-stone-200 cursor-zoom-in group-hover:border-black transition-all overflow-hidden">
+                                <div className="relative aspect-video flex h-24 items-center justify-center bg-stone-100 border border-stone-200 cursor-zoom-in hover:border-black transition-all overflow-hidden group">
                                   <img 
                                     src={url} 
                                     alt={`Feedback attachment ${idx + 1}`} 
-                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                                    referrerPolicy="no-referrer"
+                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                    onError={(e: any) => {
+                                      e.currentTarget.style.display = 'none';
+                                      const fallback = document.createElement('div');
+                                      fallback.className = 'flex flex-col items-center gap-1 p-2 text-center';
+                                      fallback.innerHTML = `
+                                        <span class="text-[8px] uppercase tracking-widest text-red-400 font-bold">Load Failed</span>
+                                        <span class="text-[6px] text-stone-400 break-all select-all font-mono">${url.split('/').pop()}</span>
+                                      `;
+                                      e.currentTarget.parentElement.appendChild(fallback);
+                                    }}
                                   />
-                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                                    <Eye className="text-white h-6 w-6" />
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                                    <Eye className="text-white h-6 w-6 mb-1" />
+                                    <span className="text-[8px] text-white uppercase font-bold tracking-widest">Enlarge</span>
                                   </div>
                                 </div>
                               } />
@@ -902,12 +912,16 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
                                   src={url} 
                                   alt={`Feedback attachment ${idx + 1} full`} 
                                   className="w-full h-auto"
-                                  referrerPolicy="no-referrer"
                                 />
                               </DialogContent>
                             </Dialog>
                           );
                         })}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 bg-stone-50 border border-stone-100 italic text-[10px] text-stone-400 rounded-none">
+                        <ImageIcon className="h-3 w-3" />
+                        <span>No image attachments provided</span>
                       </div>
                     )}
                   </CardContent>
