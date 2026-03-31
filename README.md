@@ -7,6 +7,8 @@
 This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/4e53571c-f4fe-40bb-91b9-d78eafabc211
+---
+Deployment status: Automated Build Enabled.
 
 ## Run Locally
 
