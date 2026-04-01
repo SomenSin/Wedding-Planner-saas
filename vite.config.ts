@@ -7,10 +7,8 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), tailwindcss()],
-    base: process.env.VITE_BASE_URL || '/',
     define: {
-      // SEC-02: Do NOT define sensitive API keys here for browser bundling.
-      // Move AI logic to Supabase Edge Functions instead.
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
       alias: {

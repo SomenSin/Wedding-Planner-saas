@@ -8,10 +8,7 @@ import {
   Plus, 
   Calendar,
   ArrowRight,
-  Edit2,
-  Gift,
-  Wine,
-  Clock
+  Edit2
 } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { motion } from 'motion/react';
@@ -32,16 +29,10 @@ interface DashboardHomeProps {
   coupleName: string;
   partnerName: string;
   guestCount: number;
-  guests: any[];
   rsvpsAccepted: number;
   totalBudget: number;
   spentBudget: number;
   upcomingTasks: any[];
-  itinerary: any[];
-  registryItems: any[];
-  vendors: any[];
-  drinks: any[];
-  checklistCategories: any[];
   onQuickAction: (action: string) => void;
   onUpdateWeddingDetails: (details: any) => void;
   currency: string;
@@ -52,16 +43,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   coupleName,
   partnerName,
   guestCount,
-  guests,
   rsvpsAccepted,
   totalBudget,
   spentBudget,
   upcomingTasks,
-  itinerary,
-  registryItems,
-  vendors,
-  drinks,
-  checklistCategories,
   onQuickAction,
   onUpdateWeddingDetails,
   currency
@@ -73,41 +58,6 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     partner_name: partnerName,
     wedding_date: weddingDate
   });
-
-  // Parse "HH:MM AM/PM" to minutes since midnight for sorting
-  // Parse various time formats like "9 AM", "10:30 PM", "12:00 PM"
-  const parseTimeToMinutes = (timeStr: string): number => {
-    if (!timeStr) return 9999;
-    const match = timeStr.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i);
-    if (!match) return 9999;
-    
-    let hours = parseInt(match[1]);
-    const mins = match[2] ? parseInt(match[2]) : 0;
-    const period = match[3].toUpperCase();
-    
-    if (period === 'PM' && hours !== 12) hours += 12;
-    if (period === 'AM' && hours === 12) hours = 0;
-    return hours * 60 + mins;
-  };
-
-  // Helper to normalize dates to simplified YYYY-MM-DD for comparison
-  const normalizeDate = (d: any) => {
-    if (!d) return '';
-    try {
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return String(d).split('T')[0];
-      return dt.toISOString().split('T')[0];
-    } catch {
-      return String(d).split('T')[0];
-    }
-  };
-
-  // Filter and sort itinerary for dashboard display (Wedding Day only)
-  const normWeddingDate = normalizeDate(weddingDate);
-  const weddingDayItems = itinerary
-    .filter(item => normalizeDate(item.event_date) === normWeddingDate)
-    .sort((a, b) => parseTimeToMinutes(a.time_text) - parseTimeToMinutes(b.time_text))
-    .slice(0, 3);
 
   useEffect(() => {
     setEditDetails({
@@ -151,12 +101,6 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       maximumFractionDigits: 0,
     }).format(value);
   };
-
-  // Calculate total headcount (sum of party_size) for accurate drink estimations
-  const totalHeadcount = guests.reduce((sum, g) => sum + (g.party_size || 1), 0);
-
-  // Calculate total drinks from the actual drink calculator entries
-  const totalDrinksFromCalculator = (drinks || []).reduce((sum, d) => sum + (d.estimated || 0), 0);
 
   return (
     <div className="space-y-8">
@@ -275,199 +219,73 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         </Button>
       </div>
 
-      {/* Summary Widgets Grid */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Budget Status */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50">
+      {/* Mini-Widgets */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
               <DollarSign className="h-4 w-4" />
-              Budget Status
+              Budget Spent
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-semibold text-zinc-900">{budgetSpentPercent}%</span>
-              <span className="text-xs text-zinc-400">spent of total</span>
+              <span className="text-xs text-zinc-400">of total budget</span>
             </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200/50">
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
               <div 
-                className="h-full bg-zinc-900 transition-all duration-700" 
+                className="h-full bg-zinc-900 transition-all duration-500" 
                 style={{ width: `${budgetSpentPercent}%` }} 
               />
             </div>
-            <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-              Spent: {formatCurrency(spentBudget)}
-            </p>
+            <p className="mt-2 text-xs text-zinc-500">{formatCurrency(spentBudget)} spent of {formatCurrency(totalBudget)}</p>
           </CardContent>
         </Card>
 
-        {/* Guest RSVPs */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50">
+        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
               <Users className="h-4 w-4" />
-              RSVPs Received
+              RSVPs Accepted
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-semibold text-zinc-900">{rsvpsAccepted}</span>
-              <span className="text-xs text-zinc-400">accepted of {guestCount}</span>
+              <span className="text-xs text-zinc-400">out of {guestCount} guests</span>
             </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200/50">
-              <div 
-                className="h-full bg-zinc-900 transition-all duration-700" 
-                style={{ width: `${guestCount > 0 ? (rsvpsAccepted / guestCount) * 100 : 0}%` }} 
-              />
-            </div>
-            <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-              Pending: {guestCount - rsvpsAccepted - guests.filter(g => g.rsvp_status === 'declined').length} response(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Registry & Gifts */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
-              <Gift className="h-4 w-4" />
-              Gift Registry
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-zinc-900">{registryItems.length}</span>
-              <span className="text-xs text-zinc-400">items in list</span>
-            </div>
-            <p className="mt-4 text-xs text-zinc-500">
-              <span className="font-bold text-zinc-900">{registryItems.filter(i => i.is_purchased).length}</span> gift received so far
-            </p>
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-              Cash Received: {formatCurrency(registryItems.reduce((acc, current) => acc + (current.price || 0), 0))} value
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Vendors */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
-              <Calendar className="h-4 w-4" />
-              Vendors Hired
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-zinc-900">{vendors.length}</span>
-              <span className="text-xs text-zinc-400">Total vendors</span>
-            </div>
-            <div className="mt-4 flex flex-col gap-1">
-              <p className="text-xs text-zinc-500">
-                <span className="font-bold text-zinc-900">{vendors.filter(v => v.status === 'hired').length}</span> confirmed hired
-              </p>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/50">
+            <div className="mt-4 flex gap-1">
+              {Array.from({ length: 10 }).map((_, i) => (
                 <div 
-                  className="h-full bg-zinc-900 transition-all" 
-                  style={{ width: `${vendors.length > 0 ? (vendors.filter(v => v.status === 'hired').length / vendors.length) * 100 : 0}%` }} 
+                  key={i} 
+                  className={`h-2 flex-1 rounded-full ${i < (rsvpsAccepted / (guestCount || 1) * 10) ? 'bg-zinc-900' : 'bg-zinc-200'}`} 
                 />
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Drink Calculator Summary */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
-              <Wine className="h-4 w-4" />
-              Drink Estimations
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-zinc-900">
-                {totalDrinksFromCalculator > 0 ? totalDrinksFromCalculator : Math.round(totalHeadcount * 4)}
-              </span>
-              <span className="text-xs text-zinc-400">total drinks est.</span>
-            </div>
-            <p className="mt-4 text-xs text-zinc-500 leading-tight">
-              Based on {totalDrinksFromCalculator > 0 ? 'calculator list' : `${totalHeadcount} guests`}
-            </p>
-            <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-              Breakdown: 50% Soft Drinks, 20% Beer, 15% Wine, 10% Spirits, 5% Others
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Itinerary & Tasks */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
-              <Clock className="h-4 w-4" />
-              Wedding Day Itinerary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="space-y-4">
-              {weddingDayItems.length > 0 ? (
-                <div className="space-y-3">
-                  {weddingDayItems.map((item, i) => (
-                    <div key={`itin-${i}`} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center pt-1">
-                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-900" />
-                        {i !== weddingDayItems.length - 1 && <div className="h-4 w-px bg-zinc-200 mt-1" />}
-                      </div>
-                      <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="truncate text-xs font-bold text-zinc-900 uppercase tracking-wide leading-none">{item.activity || item.title}</span>
-                        <span className="text-[10px] text-zinc-400 font-medium">{item.time_text} • {item.location || 'Main Venue'}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-4 text-center">
-                  <Clock className="h-8 w-8 text-zinc-100 mb-2" />
-                  <p className="text-[10px] text-zinc-400 italic">No wedding day events scheduled</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Master Checklist */}
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm transition-all hover:bg-zinc-100/50 md:col-span-full lg:col-span-1">
+        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
               <CheckSquare className="h-4 w-4" />
-              Checklist Progress
+              Upcoming Tasks
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {(() => {
-              const allItems = checklistCategories.flatMap(c => c.checklist_items || []);
-              const completed = allItems.filter(i => i.completed).length;
-              const total = allItems.length;
-              const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-              
-              return (
-                <>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-semibold text-zinc-900">{percent}%</span>
-                    <span className="text-xs text-zinc-400">overall roadmap</span>
+            <div className="space-y-3">
+              {upcomingTasks.length > 0 ? (
+                upcomingTasks.slice(0, 3).map((task, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="truncate text-zinc-700">{task.title}</span>
+                    <span className="text-xs text-zinc-400">{task.due_date ? formatDistanceToNow(new Date(task.due_date), { addSuffix: true }) : 'No date'}</span>
                   </div>
-                  <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200/50">
-                    <div 
-                      className="h-full bg-zinc-900 transition-all duration-1000" 
-                      style={{ width: `${percent}%` }} 
-                    />
-                  </div>
-                  <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-                    {completed} of {total} items completed
-                  </p>
-                </>
-              );
-            })()}
+                ))
+              ) : (
+                <p className="text-sm text-zinc-400 italic">All caught up!</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

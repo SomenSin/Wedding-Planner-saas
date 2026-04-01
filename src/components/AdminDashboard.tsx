@@ -1,36 +1,191 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
   Key, 
   Layout, 
   MessageSquare, 
-  RefreshCcw, 
-  Search, 
-  Loader2 
+  Plus, 
+  Trash2, 
+  Shield, 
+  ShieldOff, 
+  UserPlus, 
+  UserMinus,
+  CheckCircle2,
+  XCircle,
+  MoreVertical,
+  ChevronRight,
+  GripVertical,
+  Settings,
+  Eye,
+  ExternalLink,
+  Loader2,
+  Search,
+  Filter,
+  RefreshCcw,
+  Image as ImageIcon
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import { toast } from 'sonner';
-import { arrayMove } from '@dnd-kit/sortable';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription
+} from '@/components/ui/dialog';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
-import { UserManagement } from '@/features/admin/components/UserManagement';
-import { AccessControl } from '@/features/admin/components/AccessControl';
-import { UIBuilder } from '@/features/admin/components/UIBuilder';
-import { FeedbackInbox } from '@/features/admin/components/FeedbackInbox';
-import { Profile, AccessCode, DashboardModule, Feedback } from '@/types/admin';
+// DND Kit
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onModulesSaved }) => {
+// --- Types ---
+
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: 'admin' | 'couple' | 'guest';
+  status: 'active' | 'blocked';
+  created_at: string;
+}
+
+interface AccessCode {
+  id: string;
+  code: string;
+  linked_user_id: string | null;
+  wedding_name: string | null;
+  status: 'active' | 'inactive';
+  usage_count: number;
+  created_at: string;
+}
+
+interface DashboardModule {
+  id: string;
+  title: string;
+  enabled: boolean;
+  order: number;
+  widgets: DashboardWidget[];
+}
+
+interface DashboardWidget {
+  id: string;
+  type: 'metric' | 'table' | 'progress' | 'kanban' | 'toggle';
+  title: string;
+  config: any;
+}
+
+interface Feedback {
+  id: string;
+  user_id: string;
+  content: string;
+  image_url: string | null;
+  status: 'new' | 'in-progress' | 'resolved';
+  created_at: string;
+  profiles?: {
+    email: string;
+  };
+}
+
+// --- Sub-components ---
+
+const SortableModuleItem = ({ module, onToggle, onDelete, onEdit }: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: module.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group flex items-center gap-4 p-4 bg-white border border-stone-200 mb-2 hover:border-black transition-all">
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-black">
+        <GripVertical className="h-5 w-5" />
+      </div>
+      
+      <div className="flex-1">
+        <h4 className="text-sm font-bold uppercase tracking-wider">{module.title}</h4>
+        <p className="text-[10px] text-stone-500 uppercase tracking-widest">{module.widgets?.length || 0} Widgets Active</p>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">
+            {module.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+          <Switch 
+            checked={module.enabled} 
+            onCheckedChange={(checked) => onToggle(module.id, checked)}
+          />
+        </div>
+        
+        <Button variant="ghost" size="icon" onClick={() => onEdit(module)}>
+          <Settings className="h-4 w-4" />
+        </Button>
+        
+        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete(module.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Component ---
+
+export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
-  const [modulesDirty, setModulesDirty] = useState(false);
-  const [isSavingModules, setIsSavingModules] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [accessCodes, setAccessCodes] = useState<AccessCode[]>([]);
   const [modules, setModules] = useState<DashboardModule[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Sensors for DND
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchAllData();
@@ -40,15 +195,15 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
     setIsLoading(true);
     try {
       const [pRes, aRes, mRes, fRes] = await Promise.all([
-        supabase.from('users').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('access_codes').select('*').order('created_at', { ascending: false }),
         supabase.from('dashboard_modules').select('*').order('order', { ascending: true }),
-        supabase.from('user_feedback').select('*, users(email)').order('created_at', { ascending: false })
+        supabase.from('user_feedback').select('*, profiles(email)').order('created_at', { ascending: false })
       ]);
 
       if (pRes.data) setProfiles(pRes.data as Profile[]);
       if (aRes.data) setAccessCodes(aRes.data as AccessCode[]);
-      if (mRes.data) setModules(mRes.data.map((m: any) => ({ ...m, title: m.label || m.name, widgets: m.widgets || [] })) as DashboardModule[]);
+      if (mRes.data) setModules(mRes.data as DashboardModule[]);
       if (fRes.data) setFeedback(fRes.data as Feedback[]);
     } catch (err) {
       console.error('Admin fetch error:', err);
@@ -58,119 +213,171 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
     }
   };
 
-  // User Actions
-  const toggleUserStatus = async (userId: string, isBlocked: boolean) => {
-    const { error } = await supabase.from('users').update({ is_blocked: !isBlocked }).eq('id', userId);
-    if (!error) {
-      setProfiles(profiles.map(p => p.id === userId ? { ...p, is_blocked: !isBlocked } : p));
-      toast.success(`User ${!isBlocked ? 'blocked' : 'unblocked'}`);
+  // --- User Management Actions ---
+
+  const toggleUserStatus = async (userId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
+    if (error) toast.error(error.message);
+    else {
+      setProfiles(profiles.map(p => p.id === userId ? { ...p, status: newStatus as any } : p));
+      toast.success(`User ${newStatus === 'active' ? 'unblocked' : 'blocked'}`);
     }
   };
 
   const changeUserRole = async (userId: string, newRole: string) => {
-    const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
-    if (!error) {
+    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+    if (error) toast.error(error.message);
+    else {
       setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole as any } : p));
-      toast.success('Role updated');
+      toast.success(`Role updated to ${newRole}`);
     }
   };
 
   const deleteUser = async (userId: string) => {
-    const { error } = await supabase.from('users').delete().eq('id', userId);
-    if (!error) {
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) toast.error(error.message);
+    else {
       setProfiles(profiles.filter(p => p.id !== userId));
       toast.success('User deleted');
     }
   };
 
-  // Access Code Actions
-  const createManualCode = async (code: string, eventName: string) => {
-    const { data, error } = await supabase.from('access_codes').insert([{ code, event_name: eventName, is_active: true }]).select();
-    if (!error && data) {
+  // --- Access Code Actions ---
+
+  const [isAddingCode, setIsAddingCode] = useState(false);
+  const [newManualCode, setNewManualCode] = useState('');
+
+  const createManualCode = async () => {
+    if (!newManualCode) return;
+    const { data, error } = await supabase.from('access_codes').insert([{
+      code: newManualCode,
+      status: 'active',
+      usage_count: 0
+    }]).select();
+
+    if (error) toast.error(error.message);
+    else if (data) {
       setAccessCodes([data[0] as AccessCode, ...accessCodes]);
-      toast.success('Code created');
+      setNewManualCode('');
+      setIsAddingCode(false);
+      toast.success(`Code created: ${newManualCode}`);
     }
   };
 
-  const toggleCodeStatus = async (codeId: string, isActive: boolean) => {
-    const { error } = await supabase.from('access_codes').update({ is_active: !isActive }).eq('id', codeId);
-    if (!error) {
-      setAccessCodes(accessCodes.map(c => c.id === codeId ? { ...c, is_active: !isActive } : c));
-      toast.success('Status updated');
+  const generateNewCode = async () => {
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const { data, error } = await supabase.from('access_codes').insert([{
+      code: newCode,
+      status: 'active',
+      usage_count: 0
+    }]).select();
+
+    if (error) toast.error(error.message);
+    else if (data) {
+      setAccessCodes([data[0] as AccessCode, ...accessCodes]);
+      toast.success(`Generated code: ${newCode}`);
     }
   };
 
-  const deleteCode = async (id: string) => {
-    const { error } = await supabase.from('access_codes').delete().eq('id', id);
-    if (!error) {
-      setAccessCodes(accessCodes.filter(c => c.id !== id));
-      toast.success('Code deleted');
+  const toggleCodeStatus = async (codeId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase.from('access_codes').update({ status: newStatus }).eq('id', codeId);
+    if (error) toast.error(error.message);
+    else {
+      setAccessCodes(accessCodes.map(c => c.id === codeId ? { ...c, status: newStatus as any } : c));
+      toast.success(`Code ${newStatus}`);
     }
   };
 
-  // UI Builder Actions
-  const handleDragEnd = (event: any) => {
+  // --- Module Builder Actions ---
+
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = modules.findIndex((m) => m.id === active.id);
       const newIndex = modules.findIndex((m) => m.id === over.id);
-      setModules(arrayMove(modules, oldIndex, newIndex));
-      setModulesDirty(true);
+      const newModules: DashboardModule[] = arrayMove(modules, oldIndex, newIndex);
+      
+      // Update local state
+      setModules(newModules);
+      
+      // Update DB order
+      const updates = newModules.map((m, idx) => ({ id: m.id, order: idx }));
+      const { error } = await supabase.from('dashboard_modules').upsert(updates);
+      if (error) toast.error('Failed to sync module order');
     }
   };
 
-  const saveAllModules = async () => {
-    setIsSavingModules(true);
-    const updates = modules.map((m, idx) => ({ id: m.id, name: m.name, label: m.label, enabled: m.enabled, order: idx }));
-    const { error } = await supabase.from('dashboard_modules').upsert(updates);
-    setIsSavingModules(false);
-    if (!error) {
-      setModulesDirty(false);
-      toast.success('All changes saved!');
-      onModulesSaved?.();
+  const toggleModule = async (id: string, enabled: boolean) => {
+    const { error } = await supabase.from('dashboard_modules').update({ enabled }).eq('id', id);
+    if (error) toast.error(error.message);
+    else {
+      setModules(modules.map(m => m.id === id ? { ...m, enabled } : m));
     }
   };
+
+  // --- Feedback Actions ---
+
+  const updateFeedbackStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from('user_feedback').update({ status }).eq('id', id);
+    if (error) toast.error(error.message);
+    else {
+      setFeedback(feedback.map(f => f.id === id ? { ...f, status: status as any } : f));
+      toast.success('Status updated');
+    }
+  };
+
+  const [editingModule, setEditingModule] = useState<DashboardModule | null>(null);
 
   const seedInitialModules = async () => {
     const initialModules = [
-      { name: 'overview', label: 'Dashboard Home', enabled: true, order: 0 },
-      { name: 'guests', label: 'Guest CRM', enabled: true, order: 1 },
-      { name: 'budget', label: 'Financial Hub', enabled: true, order: 2 },
-      { name: 'registry', label: 'Registry & Gifts', enabled: true, order: 3 },
-      { name: 'logistics', label: 'Logistics', enabled: true, order: 4 },
-      { name: 'vendors', label: 'Vendor Management', enabled: true, order: 5 },
-      { name: 'drinks', label: 'Drink Calculator', enabled: true, order: 6 },
-      { name: 'checklists', label: 'Master Checklists', enabled: true, order: 7 },
-      { name: 'support', label: 'Feedback & Support', enabled: true, order: 8 },
+      { id: 'overview', title: 'Dashboard Home', enabled: true, order: 0, widgets: [] },
+      { id: 'guests', title: 'Guest CRM', enabled: true, order: 1, widgets: [] },
+      { id: 'budget', title: 'Financial Hub', enabled: true, order: 2, widgets: [] },
+      { id: 'registry', title: 'Registry & Gifts', enabled: true, order: 3, widgets: [] },
+      { id: 'logistics', title: 'Logistics', enabled: true, order: 4, widgets: [] },
+      { id: 'vendors', title: 'Vendor Management', enabled: true, order: 5, widgets: [] },
+      { id: 'drinks', title: 'Drink Calculator', enabled: true, order: 6, widgets: [] },
+      { id: 'checklists', title: 'Master Checklists', enabled: true, order: 7, widgets: [] },
+      { id: 'support', title: 'Feedback & Support', enabled: true, order: 8, widgets: [] },
     ];
-    const { data, error } = await supabase.from('dashboard_modules').insert(initialModules).select();
-    if (!error && data) {
-      setModules(data.map((m: any) => ({ ...m, title: m.label || m.name, widgets: [] })) as DashboardModule[]);
-      toast.success('Modules seeded');
+
+    const { error } = await supabase.from('dashboard_modules').insert(initialModules);
+    if (error) toast.error(error.message);
+    else {
+      setModules(initialModules as any);
+      toast.success('Initial modules seeded');
     }
   };
 
   const saveModule = async (module: DashboardModule) => {
-    const payload = { id: module.id, name: module.name || module.title, label: module.title, enabled: module.enabled, order: module.order };
-    const { data, error } = await supabase.from('dashboard_modules').upsert(payload).select();
-    if (!error && data) {
-      const saved = { ...data[0], title: data[0].label || data[0].name, widgets: module.widgets || [] };
+    const { data, error } = await supabase.from('dashboard_modules').upsert(module).select();
+    if (error) toast.error(error.message);
+    else if (data) {
       setModules(prev => {
-        const index = prev.findIndex(m => m.id === module.id);
-        if (index >= 0) return prev.map(m => m.id === module.id ? saved : m);
-        return [...prev, saved];
+        const exists = prev.find(m => m.id === module.id);
+        if (exists) return prev.map(m => m.id === module.id ? data[0] as DashboardModule : m);
+        return [...prev, data[0] as DashboardModule];
       });
+      setEditingModule(null);
       toast.success('Module saved');
     }
   };
 
-  // Feedback Actions
-  const updateFeedbackStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from('user_feedback').update({ status }).eq('id', id);
-    if (!error) {
-      setFeedback(feedback.map(f => f.id === id ? { ...f, status: status as any } : f));
-      toast.success('Status updated');
-    }
+  const addWidget = (moduleId: string) => {
+    setModules(modules.map(m => {
+      if (m.id === moduleId) {
+        const newWidget: DashboardWidget = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'metric',
+          title: 'New Widget',
+          config: { value: '0' }
+        };
+        return { ...m, widgets: [...m.widgets, newWidget] };
+      }
+      return m;
+    }));
   };
 
   if (isLoading) {
@@ -186,6 +393,7 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
 
   return (
     <div className="bg-[#f8f7f5] text-[#0a0a0a] font-sans">
+      {/* Sub-navigation for Admin */}
       <div className="mb-8 flex flex-wrap gap-2 border-b border-stone-200 pb-4">
         {[
           { id: 'users', label: 'Users', icon: Users },
@@ -197,7 +405,9 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
             key={item.id}
             onClick={() => setActiveTab(item.id)}
             className={`flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest font-bold transition-all border ${
-              activeTab === item.id ? 'bg-black text-white border-black' : 'bg-white text-stone-400 border-stone-200 hover:text-black hover:border-black'
+              activeTab === item.id 
+                ? 'bg-black text-white border-black' 
+                : 'bg-white text-stone-400 border-stone-200 hover:text-black hover:border-black'
             }`}
           >
             <item.icon className="h-3 w-3" />
@@ -206,86 +416,473 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
         ))}
       </div>
 
-      <header className="mb-12 flex justify-between items-end">
-        <div>
-          <h1 className="text-5xl font-serif italic mb-2">
-            {activeTab === 'users' && 'User Management'}
-            {activeTab === 'codes' && 'Access Control'}
-            {activeTab === 'modules' && 'Dynamic UI Builder'}
-            {activeTab === 'feedback' && 'Feedback Inbox'}
-          </h1>
-          <p className="text-stone-500 uppercase tracking-widest text-[10px] font-bold">
-            Administer your platform settings and user data
-          </p>
-        </div>
-        
-        <div className="flex gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
-            <Input 
-              placeholder="Search..." 
-              className="pl-10 h-10 w-64 rounded-none border-stone-200 bg-white"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      {/* Main Content Area */}
+      <div className="">
+        <header className="mb-12 flex justify-between items-end">
+          <div>
+            <h1 className="text-5xl font-serif italic mb-2">
+              {activeTab === 'users' && 'User Management'}
+              {activeTab === 'codes' && 'Access Control'}
+              {activeTab === 'modules' && 'Dynamic UI Builder'}
+              {activeTab === 'feedback' && 'Feedback Inbox'}
+            </h1>
+            <p className="text-stone-500 uppercase tracking-widest text-[10px] font-bold">
+              {activeTab === 'users' && 'Monitor and manage platform access for all registered users'}
+              {activeTab === 'codes' && 'Manage 6-digit guest access codes and wedding links'}
+              {activeTab === 'modules' && 'Configure schema-driven dashboard modules and widgets'}
+              {activeTab === 'feedback' && 'Review and resolve user-submitted feedback and bug reports'}
+            </p>
           </div>
-          <Button variant="outline" className="h-10 rounded-none border-stone-200 bg-white" onClick={fetchAllData}>
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
-        </div>
-      </header>
+          
+          <div className="flex gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+              <Input 
+                placeholder="Search..." 
+                className="pl-10 h-10 w-64 rounded-none border-stone-200 bg-white"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button variant="outline" className="h-10 rounded-none border-stone-200 bg-white" onClick={fetchAllData}>
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
 
-      <AnimatePresence mode="wait">
-        <motion.div 
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-        >
+        {/* --- Tab Content --- */}
+
+        <AnimatePresence mode="wait">
           {activeTab === 'users' && (
-            <UserManagement 
-              profiles={profiles} 
-              searchQuery={searchQuery} 
-              toggleUserStatus={toggleUserStatus}
-              changeUserRole={changeUserRole}
-              deleteUser={deleteUser}
-            />
+            <motion.div 
+              key="users"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <Card className="rounded-none border-stone-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-stone-50 border-b border-stone-200">
+                        <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">User</th>
+                        <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Role</th>
+                        <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Status</th>
+                        <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Joined</th>
+                        <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {profiles.filter(p => p.email.toLowerCase().includes(searchQuery.toLowerCase())).map((profile) => (
+                        <tr key={profile.id} className="hover:bg-stone-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-stone-500 font-bold text-xs">
+                                {profile.email[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold">{profile.full_name || 'Anonymous User'}</div>
+                                <div className="text-[10px] text-stone-400 font-mono">{profile.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant={profile.role === 'admin' ? 'default' : 'secondary'} className="rounded-none uppercase text-[9px] tracking-widest">
+                              {profile.role}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {profile.status === 'active' ? (
+                                <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <XCircle className="h-3 w-3 text-red-500" />
+                              )}
+                              <span className={`text-[10px] uppercase tracking-widest font-bold ${profile.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+                                {profile.status}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-[10px] font-mono text-stone-500">
+                            {new Date(profile.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                                <MoreVertical className="h-4 w-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-none w-48">
+                                <DropdownMenuItem onClick={() => toggleUserStatus(profile.id, profile.status)}>
+                                  {profile.status === 'active' ? <ShieldOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}
+                                  {profile.status === 'active' ? 'Block Access' : 'Unblock Access'}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => changeUserRole(profile.id, profile.role === 'admin' ? 'couple' : 'admin')}>
+                                  {profile.role === 'admin' ? <UserMinus className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                                  {profile.role === 'admin' ? 'Make User' : 'Make Admin'}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600" onClick={() => deleteUser(profile.id)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </motion.div>
           )}
+
           {activeTab === 'codes' && (
-            <AccessControl 
-              accessCodes={accessCodes}
-              createManualCode={createManualCode}
-              toggleCodeStatus={toggleCodeStatus}
-              deleteCode={deleteCode}
-            />
+            <motion.div 
+              key="codes"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex justify-end gap-3">
+                <Dialog open={isAddingCode} onOpenChange={setIsAddingCode}>
+                  <DialogTrigger render={<Button variant="outline" className="rounded-none">
+                    <Plus className="mr-2 h-4 w-4" /> Create Custom Code
+                  </Button>} />
+                  <DialogContent className="rounded-none">
+                    <DialogHeader>
+                      <DialogTitle className="font-serif italic text-2xl">Create Access Code</DialogTitle>
+                      <DialogDescription className="uppercase tracking-widest text-[10px] font-bold">
+                        Manually define a code for a couple or guest
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Access Code</Label>
+                        <Input 
+                          value={newManualCode} 
+                          onChange={(e) => setNewManualCode(e.target.value)}
+                          placeholder="e.g. SMITH2026"
+                          className="rounded-none border-stone-200"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" className="rounded-none" onClick={() => setIsAddingCode(false)}>Cancel</Button>
+                      <Button className="rounded-none bg-black hover:bg-black/90 px-8" onClick={createManualCode}>
+                        Create Code
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button className="rounded-none bg-black hover:bg-black/90" onClick={generateNewCode}>
+                  <Plus className="mr-2 h-4 w-4" /> Generate Random Code
+                </Button>
+              </div>
+
+              <Card className="rounded-none border-stone-200 shadow-sm overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-stone-50 border-b border-stone-200">
+                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Code</th>
+                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Wedding / Link</th>
+                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Status</th>
+                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500">Usage</th>
+                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {accessCodes.map((code) => (
+                      <tr key={code.id} className="hover:bg-stone-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="font-mono text-xl font-bold tracking-widest">{code.code}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold">{code.wedding_name || 'Unlinked Code'}</div>
+                          <div className="text-[10px] text-stone-400 font-mono italic">ID: {code.linked_user_id || 'N/A'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={code.status === 'active' ? 'default' : 'outline'} className="rounded-none uppercase text-[9px] tracking-widest">
+                            {code.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-mono">{code.usage_count}</div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => toggleCodeStatus(code.id, code.status)}>
+                              {code.status === 'active' ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-red-500" onClick={async () => {
+                              const { error } = await supabase.from('access_codes').delete().eq('id', code.id);
+                              if (!error) setAccessCodes(accessCodes.filter(c => c.id !== code.id));
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </motion.div>
           )}
+
           {activeTab === 'modules' && (
-            <UIBuilder 
-              modules={modules}
-              modulesDirty={modulesDirty}
-              isSavingModules={isSavingModules}
-              onDragEnd={handleDragEnd}
-              onToggleModule={(id, enabled) => {
-                setModules(modules.map(m => m.id === id ? { ...m, enabled } : m));
-                setModulesDirty(true);
-              }}
-              onDeleteModule={async (id) => {
-                const { error } = await supabase.from('dashboard_modules').delete().eq('id', id);
-                if (!error) setModules(modules.filter(m => m.id !== id));
-              }}
-              onSaveAllModules={saveAllModules}
-              onSeedModules={seedInitialModules}
-              onSaveModule={saveModule}
-            />
+            <motion.div 
+              key="modules"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex justify-end gap-4">
+                {modules.length === 0 && (
+                  <Button variant="outline" className="rounded-none border-stone-200" onClick={seedInitialModules}>
+                    Seed Initial Modules
+                  </Button>
+                )}
+                <Button className="rounded-none bg-black hover:bg-black/90" onClick={() => {
+                  const newModule: DashboardModule = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    title: 'New Module',
+                    enabled: true,
+                    order: modules.length,
+                    widgets: []
+                  };
+                  setEditingModule(newModule);
+                }}>
+                  <Plus className="mr-2 h-4 w-4" /> Create New Module
+                </Button>
+              </div>
+
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext 
+                  items={modules.map(m => m.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {modules.map((module) => (
+                      <SortableModuleItem 
+                        key={module.id} 
+                        module={module} 
+                        onToggle={toggleModule}
+                        onDelete={async (id) => {
+                          const { error } = await supabase.from('dashboard_modules').delete().eq('id', id);
+                          if (!error) setModules(modules.filter(m => m.id !== id));
+                        }}
+                        onEdit={(m) => setEditingModule(m)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+
+              {/* Module Editor Dialog */}
+              <Dialog open={!!editingModule} onOpenChange={(open) => !open && setEditingModule(null)}>
+                <DialogContent className="max-w-2xl rounded-none">
+                  <DialogHeader>
+                    <DialogTitle className="font-serif italic text-2xl">
+                      {editingModule?.id ? 'Edit Module' : 'Create Module'}
+                    </DialogTitle>
+                    <DialogDescription className="uppercase tracking-widest text-[10px] font-bold">
+                      Configure widgets and layout for this dashboard section
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {editingModule && (
+                    <div className="space-y-6 py-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Module Title</Label>
+                        <Input 
+                          value={editingModule.title} 
+                          onChange={(e) => setEditingModule({ ...editingModule, title: e.target.value })}
+                          className="rounded-none border-stone-200"
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Widgets</Label>
+                          <Button variant="outline" size="sm" className="rounded-none text-[10px]" onClick={() => {
+                            const newWidget: DashboardWidget = {
+                              id: Math.random().toString(36).substr(2, 9),
+                              type: 'metric',
+                              title: 'New Widget',
+                              config: { value: '0' }
+                            };
+                            setEditingModule({ ...editingModule, widgets: [...editingModule.widgets, newWidget] });
+                          }}>
+                            <Plus className="h-3 w-3 mr-1" /> Add Widget
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                          {editingModule.widgets.map((widget, idx) => (
+                            <div key={widget.id} className="p-4 border border-stone-100 bg-stone-50/50 space-y-3">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-[9px] uppercase tracking-widest text-stone-400">Title</Label>
+                                    <Input 
+                                      value={widget.title}
+                                      onChange={(e) => {
+                                        const newWidgets = [...editingModule.widgets];
+                                        newWidgets[idx].title = e.target.value;
+                                        setEditingModule({ ...editingModule, widgets: newWidgets });
+                                      }}
+                                      className="h-8 text-xs rounded-none"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[9px] uppercase tracking-widest text-stone-400">Type</Label>
+                                    <select 
+                                      value={widget.type}
+                                      onChange={(e) => {
+                                        const newWidgets = [...editingModule.widgets];
+                                        newWidgets[idx].type = e.target.value as any;
+                                        setEditingModule({ ...editingModule, widgets: newWidgets });
+                                      }}
+                                      className="w-full h-8 text-xs border border-stone-200 bg-white rounded-none px-2"
+                                    >
+                                      <option value="metric">Metric Card</option>
+                                      <option value="progress">Progress Ring</option>
+                                      <option value="table">Data Table</option>
+                                      <option value="kanban">Kanban Board</option>
+                                      <option value="toggle">Toggle</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-red-400 hover:text-red-500"
+                                  onClick={() => {
+                                    const newWidgets = editingModule.widgets.filter((_, i) => i !== idx);
+                                    setEditingModule({ ...editingModule, widgets: newWidgets });
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <DialogFooter>
+                    <Button variant="outline" className="rounded-none" onClick={() => setEditingModule(null)}>Cancel</Button>
+                    <Button className="rounded-none bg-black hover:bg-black/90 px-8" onClick={() => editingModule && saveModule(editingModule)}>
+                      Save Module
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {modules.length === 0 && (
+                <div className="p-12 border-2 border-dashed border-stone-200 text-center text-stone-400 uppercase tracking-widest text-[10px] font-bold">
+                  No dynamic modules configured
+                </div>
+              )}
+            </motion.div>
           )}
+
           {activeTab === 'feedback' && (
-            <FeedbackInbox 
-              feedback={feedback}
-              updateFeedbackStatus={updateFeedbackStatus}
-            />
+            <motion.div 
+              key="feedback"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {feedback.map((item) => (
+                <Card key={item.id} className="rounded-none border-stone-200 shadow-sm flex flex-col group">
+                  <CardHeader className="pb-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge className={`rounded-none uppercase text-[8px] tracking-widest ${
+                        item.status === 'resolved' ? 'bg-green-500' : 
+                        item.status === 'in-progress' ? 'bg-blue-500' : 'bg-stone-500'
+                      }`}>
+                        {item.status}
+                      </Badge>
+                      <span className="text-[9px] font-mono text-stone-400">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-stone-500">
+                      {item.profiles?.email || 'Anonymous'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-1 space-y-4">
+                    <p className="text-sm leading-relaxed text-stone-600">
+                      {item.content}
+                    </p>
+                    
+                    {item.image_url && (
+                      <Dialog>
+                        <DialogTrigger render={<div className="relative aspect-video bg-stone-100 border border-stone-200 cursor-zoom-in group-hover:border-black transition-all overflow-hidden" />}>
+                          <img 
+                            src={item.image_url} 
+                            alt="Feedback attachment" 
+                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                            <Eye className="text-white h-6 w-6" />
+                          </div>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none">
+                          <img 
+                            src={item.image_url} 
+                            alt="Feedback attachment full" 
+                            className="w-full h-auto"
+                            referrerPolicy="no-referrer"
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </CardContent>
+                  <div className="p-4 border-t border-stone-100 flex justify-between gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="flex-1 rounded-none text-[10px] uppercase tracking-widest font-bold" />}>
+                        Update Status
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="rounded-none w-40">
+                        <DropdownMenuItem onClick={() => updateFeedbackStatus(item.id, 'new')}>Mark as New</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateFeedbackStatus(item.id, 'in-progress')}>Mark as In Progress</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateFeedbackStatus(item.id, 'resolved')}>Mark as Resolved</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-50 rounded-none" onClick={async () => {
+                      const { error } = await supabase.from('user_feedback').delete().eq('id', item.id);
+                      if (!error) setFeedback(feedback.filter(f => f.id !== item.id));
+                    }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+
+              {feedback.length === 0 && (
+                <div className="col-span-full p-24 border-2 border-dashed border-stone-200 text-center text-stone-400 uppercase tracking-widest text-[10px] font-bold">
+                  Inbox is empty
+                </div>
+              )}
+            </motion.div>
           )}
-        </motion.div>
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

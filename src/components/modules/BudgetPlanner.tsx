@@ -38,8 +38,7 @@ import {
   ArrowDownRight,
   Edit2,
   Check,
-  X,
-  Trash2
+  X
 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { 
@@ -64,10 +63,10 @@ import { supabase } from '@/lib/supabase';
 interface BudgetItem {
   id: string;
   category: string;
-  item_name: string;
   estimated_cost: number;
   actual_cost: number;
-  is_paid: boolean;
+  paid_amount: number;
+  notes: string;
 }
 
 interface BudgetPlannerProps {
@@ -82,15 +81,7 @@ interface BudgetPlannerProps {
   refreshData: () => void;
 }
 
-const COLORS = [
-  '#18181b', // Zinc 900
-  '#c5a880', // Champagne Gold
-  '#e2c2c6', // Blush Pink
-  '#8a9a86', // Sage Green
-  '#a0aba5', // Dusty Blue/Gray
-  '#e8e4e1', // Warm Linen
-  '#52525b'  // Zinc 600
-];
+const COLORS = ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -116,13 +107,11 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [tempBudget, setTempBudget] = useState(totalBudget);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [newItem, setNewItem] = useState({
     category: '',
-    item_name: '',
     estimated_cost: 0,
     actual_cost: 0,
-    is_paid: false
+    notes: ''
   });
 
   const stats = useMemo(() => {
@@ -179,12 +168,10 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
     const { data, error } = await supabase
       .from('budget_items')
       .insert([{
-        category: newItem.category,
-        item_name: newItem.item_name || 'Expense',
-        estimated_cost: newItem.estimated_cost,
-        actual_cost: newItem.actual_cost,
-        is_paid: newItem.is_paid,
-        couple_id: userId
+        ...newItem,
+        user_id: userId,
+        paid_amount: 0,
+        actual_cost: newItem.actual_cost || 0
       }])
       .select();
 
@@ -193,54 +180,9 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
     } else {
       toast.success('Expense added');
       setIsAddDialogOpen(false);
-      setNewItem({ category: '', item_name: '', estimated_cost: 0, actual_cost: 0, is_paid: false });
+      setNewItem({ category: '', estimated_cost: 0, actual_cost: 0, notes: '' });
       refreshData();
     }
-  };
-
-  const handleEditExpense = () => {
-    if (!editingItem) return;
-    if (!editingItem.category) {
-      toast.error('Please enter a category');
-      return;
-    }
-    
-    onUpdateItem(editingItem.id, {
-      category: editingItem.category,
-      item_name: editingItem.item_name,
-      estimated_cost: editingItem.estimated_cost,
-      actual_cost: editingItem.actual_cost,
-      is_paid: editingItem.is_paid
-    });
-    
-    toast.success('Expense updated');
-    setEditingItem(null);
-  };
-
-  const handleExport = () => {
-    if (budgetItems.length === 0) {
-      toast.error('No expenses to export');
-      return;
-    }
-    
-    const headers = ['Category,Expense Name,Estimated Cost,Actual Cost,Status'];
-    const rows = budgetItems.map(item => {
-      const isOver = item.actual_cost > item.estimated_cost;
-      const status = isOver ? 'Over Budget' : 'On Track';
-      return `"${item.category || ''}","${item.item_name || ''}","${item.estimated_cost || 0}","${item.actual_cost || 0}","${status}"`;
-    });
-    const csvContent = headers.concat(rows).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "budget-ledger.csv");
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Budget exported successfully!');
   };
 
   return (
@@ -366,41 +308,29 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             <CardTitle>Spending by Category</CardTitle>
             <CardDescription>Distribution of actual costs across categories.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col h-[400px]">
-            <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-auto grid grid-cols-2 gap-4 text-center border-t border-zinc-100 pt-6">
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-zinc-900">{formatCurrency(stats.totalEstimated)}</span>
-                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Total Estimated</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-zinc-900">{formatCurrency(stats.totalActual)}</span>
-                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Total Actual</span>
-              </div>
-            </div>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                />
+                <Legend verticalAlign="bottom" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
@@ -437,7 +367,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             <CardDescription>Detailed breakdown of all wedding expenses.</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="rounded-xl">
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
@@ -484,11 +414,11 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Expense Name</Label>
+                    <Label>Notes</Label>
                     <Input 
-                      placeholder="e.g. Venue Deposit" 
-                      value={newItem.item_name}
-                      onChange={(e) => setNewItem({ ...newItem, item_name: e.target.value })}
+                      placeholder="Optional notes" 
+                      value={newItem.notes}
+                      onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
                       className="rounded-xl"
                     />
                   </div>
@@ -496,58 +426,6 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
                   <Button onClick={handleAddExpense} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Add Expense</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-              <DialogContent className="rounded-3xl">
-                <DialogHeader>
-                  <DialogTitle className="font-serif italic text-2xl">Edit Expense</DialogTitle>
-                </DialogHeader>
-                {editingItem && (
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Category</Label>
-                      <Input 
-                        value={editingItem.category}
-                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Estimated Cost ({currency})</Label>
-                        <Input 
-                          type="number" 
-                          value={editingItem.estimated_cost === 0 ? '' : editingItem.estimated_cost}
-                          onChange={(e) => setEditingItem({ ...editingItem, estimated_cost: Number(e.target.value) })}
-                          className="rounded-xl"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Actual Cost ({currency})</Label>
-                        <Input 
-                          type="number" 
-                          value={editingItem.actual_cost === 0 ? '' : editingItem.actual_cost}
-                          onChange={(e) => setEditingItem({ ...editingItem, actual_cost: Number(e.target.value) })}
-                          className="rounded-xl"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Expense Name</Label>
-                      <Input 
-                        value={editingItem.item_name || ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, item_name: e.target.value })}
-                        className="rounded-xl"
-                      />
-                    </div>
-                  </div>
-                )}
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditingItem(null)} className="rounded-xl">Cancel</Button>
-                  <Button onClick={handleEditExpense} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -573,12 +451,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                   
                   return (
                     <TableRow key={item.id} className="group transition-colors hover:bg-zinc-50">
-                      <TableCell className="font-medium text-zinc-900">
-                        <div className="flex flex-col">
-                           <span>{item.category}</span>
-                           <span className="text-xs text-zinc-400 font-normal">{item.item_name}</span>
-                        </div>
-                      </TableCell>
+                      <TableCell className="font-medium text-zinc-900">{item.category}</TableCell>
                       <TableCell className="text-zinc-500">{formatCurrency(item.estimated_cost)}</TableCell>
                       <TableCell className={`font-semibold ${isOver ? 'text-red-500' : 'text-zinc-900'}`}>
                         {formatCurrency(item.actual_cost)}
@@ -610,24 +483,14 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
-                            onClick={() => setEditingItem(item)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => onDeleteItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => onDeleteItem(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
