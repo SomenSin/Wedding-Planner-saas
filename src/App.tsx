@@ -4,792 +4,38 @@ import {
   Routes,
   Route,
   Navigate,
-  useNavigate,
 } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { supabase } from '@/lib/supabase';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { useStore } from '@/store/useStore';
-
-import { Heart, Loader2, LayoutDashboard, Users, DollarSign, Gift, Calendar, Clock, Wine, CheckSquare, MessageSquare, Menu, X, LogOut, Camera, Flower2, Shield, Layout } from 'lucide-react';
-import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 import { LoginSplit } from '@/components/LoginSplit';
-import { AdminDashboard } from '@/components/AdminDashboard';
-import { DashboardHome } from '@/components/modules/DashboardHome';
-import { GuestCRM } from '@/components/modules/GuestCRM';
-import { BudgetPlanner } from '@/components/modules/BudgetPlanner';
-import { RegistryManager } from '@/components/modules/RegistryManager';
-import { LogisticsManager } from '@/components/modules/LogisticsManager';
-import { VendorManager } from '@/components/modules/VendorManager';
-import { DrinkCalculator } from '@/components/modules/DrinkCalculator';
-import { Checklists } from '@/components/modules/Checklists';
-import { SupportModule } from '@/components/modules/SupportModule';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion, AnimatePresence } from 'motion/react';
-
-// --- Components ---
-
-const GuestPortal = () => {
-  const [code, setCode] = useState('');
-  const navigate = useNavigate();
-
-  const handleAccess = () => {
-    if (code.length === 6) {
-      toast.success('Access granted!');
-      navigate('/guest/dashboard');
-    } else {
-      toast.error('Please enter a valid 6-digit code.');
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
-      <Card className="w-full max-w-md rounded-none border-stone-200 shadow-sm">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Heart className="h-6 w-6 text-stone-300" />
-          </div>
-          <CardTitle className="text-4xl font-serif italic">VowVantage</CardTitle>
-          <CardDescription className="uppercase tracking-widest text-[10px] font-bold mt-2">Guest Access Portal</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Enter 6-Digit Code</Label>
-            <Input
-              placeholder="000000"
-              maxLength={6}
-              className="text-center text-3xl tracking-[0.5em] h-16 rounded-none border-stone-200 font-mono"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-          </div>
-          <Button className="w-full h-12 rounded-none bg-black hover:bg-black/90" onClick={handleAccess}>
-            View Wedding Details
-          </Button>
-          
-          <div className="pt-6 border-t border-stone-100 text-center">
-            <Button variant="link" className="text-[10px] uppercase tracking-widest font-bold text-stone-400" render={<a href="/" />} nativeButton={false}>
-              Couple Login
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const GuestDashboard = () => {
-  return (
-    <div className="min-h-screen bg-stone-50/50 p-8">
-      <div className="max-w-3xl mx-auto space-y-12">
-        <header className="text-center space-y-4">
-          <div className="flex justify-center">
-            <Heart className="h-8 w-8 text-stone-300" />
-          </div>
-          <h1 className="text-6xl font-serif italic">The Wedding of <br /> Sarah & James</h1>
-          <p className="uppercase tracking-[0.3em] text-xs font-bold text-stone-500">Saturday, June 20th, 2026</p>
-        </header>
-
-        <div className="grid gap-8">
-          <Card className="rounded-none border-stone-200 shadow-sm">
-            <CardHeader>
-              <CardTitle className="font-serif italic text-2xl">Itinerary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-6 border-l-2 border-stone-200 pl-6 relative">
-                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-stone-200" />
-                <div>
-                  <span className="font-mono text-sm font-bold">4:00 PM</span>
-                  <h3 className="font-bold uppercase tracking-wider text-sm mt-1">The Ceremony</h3>
-                  <p className="text-muted-foreground text-sm">St. Mary's Chapel, Oak Ridge</p>
-                </div>
-              </div>
-              <div className="flex gap-6 border-l-2 border-stone-200 pl-6 relative">
-                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-stone-200" />
-                <div>
-                  <span className="font-mono text-sm font-bold">5:30 PM</span>
-                  <h3 className="font-bold uppercase tracking-wider text-sm mt-1">Cocktail Hour</h3>
-                  <p className="text-muted-foreground text-sm">The Garden Terrace</p>
-                </div>
-              </div>
-              <div className="flex gap-6 border-l-2 border-stone-200 pl-6 relative">
-                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-stone-200" />
-                <div>
-                  <span className="font-mono text-sm font-bold">7:00 PM</span>
-                  <h3 className="font-bold uppercase tracking-wider text-sm mt-1">Dinner & Dancing</h3>
-                  <p className="text-muted-foreground text-sm">The Grand Ballroom</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-none border-stone-200 shadow-sm bg-stone-900 text-white">
-            <CardHeader>
-              <CardTitle className="font-serif italic text-2xl">RSVP</CardTitle>
-              <CardDescription className="text-stone-400">Please confirm your attendance by May 1st.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button className="w-full bg-white text-black hover:bg-stone-100 rounded-none h-12 font-bold uppercase tracking-widest text-xs">
-                Confirm Attendance
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <footer className="text-center pt-12">
-          <Button variant="link" className="text-[10px] uppercase tracking-widest font-bold text-stone-400" render={<a href="/guest/portal" />} nativeButton={false}>
-            Back to Portal
-          </Button>
-        </footer>
-      </div>
-    </div>
-  );
-};
-
-const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string }> = ({ isAdmin, userEmail }) => {
-  const { guestCount, setGuestCount } = useStore();
-  const [modules, setModules] = useState<any[]>([]);
-  const [activeModuleId, setActiveModuleId] = useState('overview');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  
-  // Data states
-  const [weddingDetails, setWeddingDetails] = useState<any>({ wedding_date: '', couple_name: '', partner_name: '' });
-  const [guests, setGuests] = useState<any[]>([]);
-  const [budgetItems, setBudgetItems] = useState<any[]>([]);
-  const [registryItems, setRegistryItems] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [itinerary, setItinerary] = useState<any[]>([]);
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [drinks, setDrinks] = useState<any[]>([]);
-  const [checklistCategories, setChecklistCategories] = useState<any[]>([]);
-  const [accessCode, setAccessCode] = useState('000000');
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [totalBudget, setTotalBudget] = useState(0);
-  const [currency, setCurrency] = useState('USD');
-
-  const fetchData = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return;
-    setUser(authUser);
-
-    // Check for wedding details in user metadata
-    const metadata = authUser.user_metadata;
-    if (metadata?.wedding_date) {
-      setWeddingDetails({
-        wedding_date: metadata.wedding_date,
-        couple_name: metadata.couple_name || '',
-        partner_name: metadata.partner_name || ''
-      });
-      setTotalBudget(metadata.total_budget || 0);
-      setCurrency(metadata.currency || 'USD');
-    } else {
-      setIsOnboardingOpen(true);
-    }
-
-    const [
-      mRes, 
-      gRes, 
-      bRes, 
-      rRes, 
-      tRes, 
-      iRes, 
-      vRes, 
-      clRes,
-      acRes,
-      deRes
-    ] = await Promise.all([
-      supabase.from('dashboard_modules').select('*').eq('enabled', true).order('order', { ascending: true }),
-      supabase.from('guests').select('*').eq('couple_id', authUser.id),
-      supabase.from('budget_items').select('*').eq('couple_id', authUser.id),
-      supabase.from('registry_items').select('*').eq('couple_id', authUser.id),
-      supabase.from('logistics_tasks').select('*').eq('couple_id', authUser.id),
-      supabase.from('itinerary_items').select('*').eq('couple_id', authUser.id).order('start_time', { ascending: true }),
-      supabase.from('vendors').select('*').eq('couple_id', authUser.id),
-      supabase.from('checklist_categories').select('*, checklist_items(*)').eq('couple_id', authUser.id),
-      supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle(),
-      supabase.from('drink_entries').select('*').eq('couple_id', authUser.id)
-    ]);
-    
-    if (mRes.data) setModules(mRes.data);
-    if (gRes.data) {
-      setGuests(gRes.data);
-      const totalPeople = gRes.data.reduce((acc: number, g: any) => acc + (g.party_size || 1), 0);
-      setGuestCount(totalPeople);
-    }
-    if (bRes.data) setBudgetItems(bRes.data);
-    if (rRes.data) setRegistryItems(rRes.data);
-    if (tRes.data) setTasks(tRes.data);
-    if (iRes.data) setItinerary(iRes.data);
-    if (vRes.data) setVendors(vRes.data);
-    if (deRes.data) setDrinks(deRes.data);
-    if (clRes.data) setChecklistCategories(clRes.data);
-    if (acRes.data) setAccessCode(acRes.data.code);
-    
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleOnboardingSubmit = async (details: any) => {
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        wedding_date: details.wedding_date,
-        couple_name: details.couple_name,
-        partner_name: details.partner_name
-      }
-    });
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      await fetchData(); // Full refresh to sync dashboard
-      setIsOnboardingOpen(false);
-      toast.success('Wedding details saved!');
-    }
-  };
-
-  const handleUpdateWeddingDetails = async (details: any) => {
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        wedding_date: details.wedding_date,
-        couple_name: details.couple_name,
-        partner_name: details.partner_name
-      }
-    });
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      await fetchData(); // Full refresh to sync dashboard
-      toast.success('Wedding details updated!');
-    }
-  };
-
-  const handleUpdateTotalBudget = async (newBudget: number) => {
-    const { error } = await supabase.auth.updateUser({
-      data: { total_budget: newBudget }
-    });
-    if (!error) {
-      setTotalBudget(newBudget);
-      toast.success('Budget updated');
-    }
-  };
-
-  const handleUpdateCurrency = async (newCurrency: string) => {
-    const { error } = await supabase.auth.updateUser({
-      data: { currency: newCurrency }
-    });
-    if (!error) {
-      setCurrency(newCurrency);
-      toast.success(`Currency changed to ${newCurrency}`);
-    }
-  };
-
-  const handleUpdateGuest = async (id: string, updates: any) => {
-    const { error } = await supabase.from('guests').update(updates).eq('id', id);
-    if (!error) {
-      await fetchData();
-      toast.success('Guest list updated');
-    }
-  };
-
-  const handleUpdateBudget = async (id: string, updates: any) => {
-    const { error } = await supabase.from('budget_items').update(updates).eq('id', id);
-    if (!error) {
-      await fetchData();
-      toast.success('Budget item updated');
-    }
-  };
-
-  const handleUpdateRegistry = async (id: string, updates: any) => {
-    const { error } = await supabase.from('registry_items').update(updates).eq('id', id);
-    if (!error) setRegistryItems(registryItems.map(r => r.id === id ? { ...r, ...updates } : r));
-  };
-
-  const handleUpdateTask = async (id: string, updates: any) => {
-    const { error } = await supabase.from('logistics_tasks').update(updates).eq('id', id);
-    if (!error) setTasks(tasks.map(t => t.id === id ? { ...t, ...updates } : t));
-  };
-
-  const handleUpdateItinerary = async (newItems: any[]) => {
-    setItinerary(newItems);
-    // In a real app, we'd update the order in DB
-  };
-
-  const handleUpdateVendor = async (id: string, updates: any) => {
-    const { error } = await supabase.from('vendors').update(updates).eq('id', id);
-    if (!error) setVendors(vendors.map(v => v.id === id ? { ...v, ...updates } : v));
-  };
-
-  const handleSubmitFeedback = async (data: any) => {
-    const { files, ...feedbackData } = data;
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    let imageUrls: string[] = [];
-    if (files && files.length > 0) {
-      for (const file of files) {
-        // Use timestamp and random string to ensure unique filenames
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('feedback-images')
-          .upload(fileName, file);
-
-        if (uploadError) {
-          console.error("Upload error:", uploadError);
-          toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
-          continue;
-        }
-
-        if (uploadData) {
-          // Store relative path (Supabase best practice)
-          imageUrls.push(uploadData.path);
-        }
-      }
-    }
-
-    // Map to schema: content, user_id, type
-    const payload = {
-      content: `${feedbackData.subject}\n\n${feedbackData.content}`,
-      user_id: user?.id,
-      type: feedbackData.category === 'bug' ? 'bug' : feedbackData.category === 'feature' ? 'feature' : 'other',
-      status: 'new',
-      image_url: imageUrls.length > 0 ? imageUrls.join(',') : null
-    };
-
-    const { data: insertedData, error: insertError } = await supabase
-      .from('user_feedback')
-      .insert([payload])
-      .select();
-
-    if (insertError) throw insertError;
-  };
-
-  // Static icon/label map for each module name
-  const MODULE_ICON_MAP: Record<string, { icon: any; label: string }> = {
-    overview:   { icon: LayoutDashboard, label: 'Dashboard' },
-    guests:     { icon: Users,           label: 'Guest CRM' },
-    budget:     { icon: DollarSign,      label: 'Financial Hub' },
-    registry:   { icon: Gift,            label: 'Registry & Gifts' },
-    logistics:  { icon: Clock,           label: 'Itinerary' },
-    vendors:    { icon: Calendar,        label: 'Vendors' },
-    drinks:     { icon: Wine,            label: 'Drink Calc' },
-    checklists: { icon: CheckSquare,     label: 'Checklists' },
-    support:    { icon: MessageSquare,   label: 'Support' },
-  };
-
-  // Dynamic menu — ordered and filtered by what's in the DB
-  const menuItems = modules.length > 0
-    ? modules
-        .filter(m => m.enabled)                         // only show enabled modules
-        .sort((a, b) => a.order - b.order)              // in admin-defined order
-        .map(m => ({
-          id: m.name,
-          label: m.label || MODULE_ICON_MAP[m.name]?.label || m.name,
-          icon: MODULE_ICON_MAP[m.name]?.icon || LayoutDashboard,
-        }))
-    : [
-        // Fallback when DB hasn't been seeded yet
-        { id: 'overview',   label: 'Dashboard',         icon: LayoutDashboard },
-        { id: 'guests',     label: 'Guest CRM',          icon: Users },
-        { id: 'budget',     label: 'Financial Hub',      icon: DollarSign },
-        { id: 'registry',   label: 'Registry & Gifts',   icon: Gift },
-        { id: 'logistics',  label: 'Itinerary',          icon: Clock },
-        { id: 'vendors',    label: 'Vendors',            icon: Calendar },
-        { id: 'drinks',     label: 'Drink Calc',         icon: Wine },
-        { id: 'checklists', label: 'Checklists',         icon: CheckSquare },
-      ];
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-        <Loader2 className="h-12 w-12 animate-spin text-zinc-300" />
-      </div>
-    );
-  }
-
-  const activeModule = menuItems.find(m => m.id === activeModuleId);
-
-  return (
-    <div className="flex min-h-screen bg-zinc-50">
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-white border-r border-zinc-100 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex h-full flex-col p-8">
-          <div className="mb-12 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg">
-              <Heart className="h-6 w-6" />
-            </div>
-            <span className="text-xl font-serif italic text-zinc-900">VowVantage</span>
-          </div>
-
-          <nav className="flex-1 space-y-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveModuleId(item.id);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
-                  activeModuleId === item.id 
-                    ? 'bg-zinc-900 text-white shadow-md' 
-                    : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          <div className="mt-auto pt-8 space-y-2">
-            {isAdmin && (
-              <button
-                onClick={() => setActiveModuleId('admin')}
-                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
-                  activeModuleId === 'admin' 
-                    ? 'bg-zinc-900 text-white shadow-md' 
-                    : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900'
-                }`}
-              >
-                <Shield className="h-5 w-5" />
-                Admin Panel
-              </button>
-            )}
-            <button
-              onClick={() => setActiveModuleId('support')}
-              className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
-                activeModuleId === 'support' 
-                  ? 'bg-zinc-900 text-white shadow-md' 
-                  : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900'
-              }`}
-            >
-              <MessageSquare className="h-5 w-5" />
-              Support & Feedback
-            </button>
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-50 hover:text-red-500"
-              onClick={() => supabase.auth.signOut()}
-            >
-              <LogOut className="h-5 w-5" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <header className="sticky top-0 z-40 flex h-20 items-center justify-between bg-white/80 px-8 backdrop-blur-md lg:hidden">
-          <div className="flex items-center gap-3">
-            <Heart className="h-6 w-6 text-zinc-900" />
-            <span className="text-lg font-serif italic">VowVantage</span>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
-        </header>
-
-        <div className="p-8 lg:p-12">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeModuleId}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="mb-12">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-400">Couple Dashboard</span>
-                  <div className="h-px w-8 bg-zinc-200" />
-                  <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-900">{activeModule?.label}</span>
-                </div>
-                <h1 className="text-5xl font-serif italic text-zinc-900">Our Wedding</h1>
-              </div>
-
-              {activeModuleId === 'overview' && (
-                <DashboardHome 
-                  weddingDate={weddingDetails.wedding_date}
-                  coupleName={weddingDetails.couple_name}
-                  partnerName={weddingDetails.partner_name}
-                  guestCount={guestCount}
-                  guests={guests}
-                  rsvpsAccepted={guests.filter(g => g.rsvp_status === 'accepted').reduce((acc, g) => acc + (g.party_size || 1), 0)}
-                  totalBudget={totalBudget}
-                  spentBudget={budgetItems.reduce((sum, i) => sum + i.actual_cost, 0)}
-                  upcomingTasks={tasks.filter(t => t.status !== 'done')}
-                  itinerary={itinerary}
-                  registryItems={registryItems}
-                  vendors={vendors}
-                  drinks={drinks}
-                  checklistCategories={checklistCategories}
-                  onQuickAction={(action) => setActiveModuleId(action === 'add-guest' ? 'guests' : action === 'log-expense' ? 'budget' : 'logistics')}
-                  onUpdateWeddingDetails={handleUpdateWeddingDetails}
-                  currency={currency}
-                />
-              )}
-
-              {activeModuleId === 'guests' && (
-                <GuestCRM 
-                  guests={guests}
-                  accessCode={accessCode}
-                  onUpdateGuest={handleUpdateGuest}
-                  onDeleteGuest={async (id) => {
-                    const { error } = await supabase.from('guests').delete().eq('id', id);
-                    if (!error) {
-                      await fetchData();
-                      toast.success('Guest removed');
-                    }
-                  }}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                />
-              )}
-
-              {activeModuleId === 'budget' && (
-                <BudgetPlanner 
-                  totalBudget={totalBudget}
-                  budgetItems={budgetItems}
-                  onUpdateItem={handleUpdateBudget}
-                  onDeleteItem={async (id) => {
-                    const { error } = await supabase.from('budget_items').delete().eq('id', id);
-                    if (!error) {
-                      await fetchData();
-                      toast.success('Item removed');
-                    }
-                  }}
-                  onUpdateTotalBudget={handleUpdateTotalBudget}
-                  currency={currency}
-                  onUpdateCurrency={handleUpdateCurrency}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                />
-              )}
-
-              {activeModuleId === 'registry' && (
-                <RegistryManager 
-                  guestCount={guests.length}
-                  registryItems={registryItems}
-                  cashFunds={[]}
-                  onUpdateItem={handleUpdateRegistry}
-                  onDeleteItem={async (id) => {
-                    const { error } = await supabase.from('registry_items').delete().eq('id', id);
-                    if (!error) {
-                      await fetchData();
-                      toast.success('Gift removed');
-                    }
-                  }}
-                  currency={currency}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                />
-              )}
-
-              {activeModuleId === 'logistics' && (
-                <LogisticsManager 
-                  weddingDate={weddingDetails.wedding_date}
-                  tasks={tasks}
-                  itinerary={itinerary}
-                  onUpdateTask={handleUpdateTask}
-                  onUpdateItinerary={handleUpdateItinerary}
-                  onDeleteTask={async (id) => {
-                    const { error } = await supabase.from('logistics_tasks').delete().eq('id', id);
-                    if (!error) {
-                      await fetchData();
-                      toast.success('Task removed');
-                    }
-                  }}
-                  onDeleteItineraryItem={async (id) => {
-                    const { error } = await supabase.from('itinerary_items').delete().eq('id', id);
-                    if (!error) {
-                      await fetchData();
-                      toast.success('Activity removed');
-                    }
-                  }}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                />
-              )}
-
-              {activeModuleId === 'vendors' && (
-                <VendorManager 
-                  vendors={vendors}
-                  onUpdateVendor={handleUpdateVendor}
-                  onDeleteVendor={async (id) => {
-                    const { error } = await supabase.from('vendors').delete().eq('id', id);
-                    if (!error) {
-                      await fetchData();
-                      toast.success('Vendor removed');
-                    }
-                  }}
-                  currency={currency}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                />
-              )}
-
-              {activeModuleId === 'drinks' && (
-                <DrinkCalculator
-                  guestCount={guestCount}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                />
-              )}
-
-              {activeModuleId === 'checklists' && (
-                <Checklists 
-                  categories={checklistCategories.map(cat => ({
-                    id: cat.id,
-                    title: cat.title,
-                    icon: <Layout className="h-5 w-5" />,
-                    items: cat.checklist_items || []
-                  }))}
-                  onToggleItem={async (catId, itemId, completed) => {
-                    // 1. Optimistic Update (Immediate UI response)
-                    const originalState = [...checklistCategories];
-                    setChecklistCategories(prev => prev.map(cat => {
-                      if (cat.id !== catId) return cat;
-                      return {
-                        ...cat,
-                        checklist_items: (cat.checklist_items || []).map(item => 
-                          item.id === itemId ? { ...item, completed } : item
-                        )
-                      };
-                    }));
-
-                    // 2. Background Sync
-                    const { error } = await supabase
-                      .from('checklist_items')
-                      .update({ completed })
-                      .eq('id', itemId);
-                    
-                    if (error) {
-                      // 3. Rollback on failure
-                      setChecklistCategories(originalState);
-                      toast.error("Failed to sync checklist: " + error.message);
-                    } else {
-                      // 4. Background refresh to ensure consistency (no await)
-                      fetchData();
-                      toast.success(completed ? "Task completed" : "Task uncompleted");
-                    }
-                  }}
-                  userId={user?.id || ''}
-                  refreshData={fetchData}
-                  isLoading={isLoading}
-                />
-              )}
-
-              {activeModuleId === 'support' && (
-                <SupportModule 
-                  userEmail={userEmail}
-                  onSubmitFeedback={handleSubmitFeedback}
-                />
-              )}
-
-              {activeModuleId === 'admin' && isAdmin && (
-                <div className="p-8">
-                  <AdminDashboard onModulesSaved={fetchData} />
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </main>
-
-      <OnboardingDialog 
-        isOpen={isOnboardingOpen} 
-        onSubmit={handleOnboardingSubmit} 
-      />
-
-    </div>
-  );
-};
-
-const OnboardingDialog: React.FC<{ isOpen: boolean; onSubmit: (details: any) => void }> = ({ isOpen, onSubmit }) => {
-  const [details, setDetails] = useState({
-    couple_name: '',
-    partner_name: '',
-    wedding_date: ''
-  });
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl"
-      >
-        <div className="text-center mb-8">
-          <div className="mx-auto w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center text-white mb-4">
-            <Heart className="h-6 w-6" />
-          </div>
-          <h2 className="text-3xl font-serif italic text-zinc-900">Welcome to VowVantage</h2>
-          <p className="text-zinc-500 mt-2">Let's set up your wedding dashboard</p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-widest font-bold text-zinc-500">Your Name</Label>
-            <Input 
-              value={details.couple_name}
-              onChange={(e) => setDetails({ ...details, couple_name: e.target.value })}
-              placeholder="Enter your name"
-              className="rounded-xl border-zinc-200"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-widest font-bold text-zinc-500">Partner's Name</Label>
-            <Input 
-              value={details.partner_name}
-              onChange={(e) => setDetails({ ...details, partner_name: e.target.value })}
-              placeholder="Enter partner's name"
-              className="rounded-xl border-zinc-200"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-widest font-bold text-zinc-500">Wedding Date</Label>
-            <Input 
-              type="date"
-              value={details.wedding_date}
-              onChange={(e) => setDetails({ ...details, wedding_date: e.target.value })}
-              className="rounded-xl border-zinc-200"
-            />
-          </div>
-        </div>
-
-        <Button 
-          className="w-full mt-8 rounded-xl bg-zinc-900 hover:bg-zinc-800 h-12 text-lg font-serif italic"
-          onClick={() => onSubmit(details)}
-          disabled={!details.couple_name || !details.partner_name || !details.wedding_date}
-        >
-          Start Planning
-        </Button>
-      </motion.div>
-    </div>
-  );
-};
-
-// --- Main App ---
+import { GuestPortal } from '@/features/guest/GuestPortal';
+import { GuestDashboard } from '@/features/guest/GuestDashboard';
+import { CoupleDashboard } from '@/features/dashboard/CoupleDashboard';
 
 export default function App() {
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
   const [isConfigured, setIsConfigured] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchUserRole = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .single();
+        
+        if (!error && data) {
+          setUserRole(data.role);
+        }
+      } catch (err) {
+        console.error('Error fetching user role:', err);
+      }
+    };
+
     const checkConfig = () => {
       const url = import.meta.env.VITE_SUPABASE_URL;
       const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -800,88 +46,74 @@ export default function App() {
       return true;
     };
 
-    if (!checkConfig()) return;
+    if (checkConfig()) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        if (session?.user) {
+          fetchUserRole(session.user.id);
+        }
+        setLoading(false);
+      });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+        if (session?.user) {
+          fetchUserRole(session.user.id);
+        } else {
+          setUserRole(null);
+        }
+      });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const isAdmin = session?.user?.user_metadata?.role === 'admin' || 
-                  session?.user?.email === 'somendrasing019@gmail.com' ||
-                  session?.user?.email === 'somendrasingh019@gmail.com';
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <Loader2 className="h-12 w-12 animate-spin text-zinc-300" />
+      </div>
+    );
+  }
 
   if (!isConfigured) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-50 p-8 text-center">
-        <div className="max-w-md space-y-4">
-          <h1 className="text-2xl font-serif italic">Configuration Required</h1>
-          <p className="text-muted-foreground">
-            Please set <code className="bg-stone-200 px-1 rounded">VITE_SUPABASE_URL</code> and{' '}
-            <code className="bg-stone-200 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> in your
-            environment variables (Secrets panel) to connect to your Supabase project.
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
+        <div className="max-w-md w-full bg-white p-8 border border-stone-200 shadow-sm text-center">
+          <h2 className="text-2xl font-serif italic mb-4">Configuration Required</h2>
+          <p className="text-sm text-stone-500 mb-6">
+            Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment variables to begin.
           </p>
         </div>
       </div>
     );
   }
 
+  const isAdmin = userRole === 'super_admin' || session?.user?.user_metadata?.role === 'super_admin';
+
   return (
-    <Router basename="/Wedding-Planner-saas">
+    <Router basename={import.meta.env.BASE_URL}>
       <Routes>
-        {/* Public Routes */}
         <Route 
           path="/" 
-          element={
-            session 
-              ? <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} /> 
-              : <LoginSplit />
-          } 
+          element={session ? <Navigate to="/dashboard" replace /> : <LoginSplit />} 
         />
-        <Route path="/guest/portal" element={<GuestPortal />} />
-        <Route path="/guest/dashboard" element={<GuestDashboard />} />
         <Route 
-          path="/login" 
-          element={
-            session 
-              ? <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} /> 
-              : <LoginSplit />
-          } 
-        />
-
-        {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            session 
-              ? <CoupleDashboard isAdmin={isAdmin} userEmail={session.user.email || ''} />
-              : <Navigate to="/login" />
-          }
-        />
-        <Route
-          path="/admin-dashboard"
-          element={
-            session 
-              ? (isAdmin ? <Navigate to="/dashboard" /> : <Navigate to="/dashboard" />)
-              : <Navigate to="/login" />
-          }
+          path="/dashboard" 
+          element={session ? <CoupleDashboard isAdmin={isAdmin} userEmail={session.user.email} /> : <Navigate to="/" replace />} 
         />
         
-        {/* Legacy Redirect */}
-        <Route path="/admin" element={<Navigate to="/admin-dashboard" />} />
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* Guest Routes */}
+        <Route path="/guest/portal" element={<GuestPortal />} />
+        <Route path="/guest/dashboard" element={<GuestDashboard />} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <Toaster position="top-right" richColors />
+      <Toaster position="top-center" />
     </Router>
   );
 }

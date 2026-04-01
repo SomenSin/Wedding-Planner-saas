@@ -8,10 +8,11 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('feedback-images', 'feedback-images', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- 2. Ensure the storage schema is accessible
+-- 2. Ensure the storage schema is accessible (but restricted)
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
-GRANT ALL ON TABLE storage.objects TO anon, authenticated;
-GRANT ALL ON TABLE storage.buckets TO anon, authenticated;
+-- ONLY grant SELECT on buckets/objects to public, not ALL
+GRANT SELECT ON TABLE storage.objects TO public;
+GRANT SELECT ON TABLE storage.buckets TO public;
 
 -- 3. Policy: Public View (Everyone can see images)
 DROP POLICY IF EXISTS "Public View Feedback" ON storage.objects;
@@ -25,11 +26,13 @@ DROP POLICY IF EXISTS "Auth Upload Feedback" ON storage.objects;
 CREATE POLICY "Auth Upload Feedback"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK ( bucket_id = 'feedback-images' );
+WITH CHECK ( bucket_id = 'feedback-images' AND owner = auth.uid() );
 
--- 5. Policy: Authenticated Update/Delete (Safety)
-DROP POLICY IF EXISTS "Auth Manage Feedback" ON storage.objects;
-CREATE POLICY "Auth Manage Feedback"
+-- 5. Policy: Owner can Update/Delete (Safety)
+DROP POLICY IF EXISTS "Owner Manage Feedback" ON storage.objects;
+CREATE POLICY "Owner Manage Feedback"
 ON storage.objects FOR ALL
 TO authenticated
-USING ( bucket_id = 'feedback-images' );
+USING ( bucket_id = 'feedback-images' AND owner = auth.uid() )
+WITH CHECK ( bucket_id = 'feedback-images' AND owner = auth.uid() );
+

@@ -158,21 +158,22 @@ CREATE TABLE IF NOT EXISTS public.drink_entries (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+
 -- ==========================================
--- DISABLE ROW LEVEL SECURITY TEMPORARILY
--- To prevent access block issues during setup
+-- ENABLE ROW LEVEL SECURITY
 -- ==========================================
-ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.guests DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.budget_items DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.registry_items DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.logistics_tasks DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.itinerary_items DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.vendors DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.checklist_items DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.checklist_categories DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.access_codes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.dashboard_modules DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_feedback DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.drink_settings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.drink_entries DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.guests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.budget_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.registry_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.logistics_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.itinerary_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.checklist_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.checklist_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.access_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dashboard_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.drink_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.drink_entries ENABLE ROW LEVEL SECURITY;
+

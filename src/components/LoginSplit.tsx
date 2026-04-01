@@ -19,35 +19,9 @@ export const LoginSplit: React.FC = () => {
     setIsLoading(true);
     
     try {
-      console.log('Attempting authentication for:', email);
-      
-      if (!isLogin) {
-        const { data: codeData, error: codeError } = await supabase
-          .from('access_codes')
-          .select('*')
-          .ilike('code', accessCode)
-          .eq('is_active', true)
-          .single();
-
-        if (codeError || !codeData) {
-          toast.error('Invalid or inactive access code. Please contact the administrator.');
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Add a timeout to the authentication call
       const authPromise = isLogin 
         ? supabase.auth.signInWithPassword({ email, password })
-        : supabase.auth.signUp({ 
-            email, 
-            password,
-            options: {
-              data: {
-                role: (email === 'somendrasing019@gmail.com' || email === 'somendrasingh019@gmail.com') ? 'admin' : 'couple'
-              }
-            }
-          });
+        : supabase.auth.signUp({ email, password });
 
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Authentication timed out. Please check your internet connection and Supabase configuration.')), 15000)
@@ -84,7 +58,6 @@ export const LoginSplit: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error('Caught auth error:', err);
       toast.error(err.message || 'An unexpected error occurred. Please check your connection.');
     } finally {
       setIsLoading(false);

@@ -341,10 +341,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               <span className="text-xs text-zinc-400">items in list</span>
             </div>
             <p className="mt-4 text-xs text-zinc-500">
-              <span className="font-bold text-zinc-900">{registryItems.filter(i => i.is_purchased).length}</span> items purchased so far
+              <span className="font-bold text-zinc-900">{registryItems.filter(i => i.is_purchased).length}</span> gift received so far
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-              Goal: {formatCurrency(registryItems.reduce((acc, current) => acc + (current.price || 0), 0))} value
+              Cash Received: {formatCurrency(registryItems.reduce((acc, current) => acc + (current.price || 0), 0))} value
             </p>
           </CardContent>
         </Card>

@@ -119,16 +119,19 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
   // ─── Pure formula (used for auto-seeding only) ───────────────────────────────
   const calcFromInputs = useCallback((gc: number, dur: number, ct: string): CalcResult => {
     // Multipliers: Light (1 drink/hr), Average (2 drinks/hr), Heavy (3.5 drinks/hr)
-    const m = ct === 'light' ? 1.0 : ct === 'heavy' ? 3.5 : 2.0;
+    const m = ct === 'light' ? 0.7 : ct === 'heavy' ? 1.5 : 1.0;
     const total = Math.round(gc * dur * m);
     
+    // For very small totals, we avoid many small ceils that add up
+    const safeCeil = (val: number) => (total > 0 && val < 0.1) ? 0 : Math.ceil(val);
+
     return {
       totalDrinks:   total,
-      wineBottles:   Math.ceil((total * 0.15) / 5),      // 15% Wine
-      beerBottles:   Math.ceil(total * 0.20),            // 20% Beer
-      liquorBottles: Math.ceil((total * 0.10) / 17),     // 10% Spirits
-      othersTotal:   Math.ceil((total * 0.05) / 6),      // 5% Champagne/Others
-      nonAlcTotal:   Math.ceil(total * 0.50),            // 50% Non-alcoholic (Total units)
+      wineBottles:   safeCeil((total * 0.15) / 5),      // 15% Wine
+      beerBottles:   safeCeil(total * 0.20),            // 20% Beer
+      liquorBottles: safeCeil((total * 0.10) / 17),     // 10% Spirits
+      othersTotal:   safeCeil((total * 0.05) / 6),      // 5% Champagne/Others
+      nonAlcTotal:   safeCeil(total * 0.50),            // 50% Non-alcoholic
     };
   }, []);
 
