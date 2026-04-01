@@ -5,6 +5,7 @@ import {
   Key, 
   Layout, 
   MessageSquare, 
+<<<<<<< HEAD
   Plus, 
   Trash2, 
   Shield, 
@@ -24,6 +25,12 @@ import {
   Filter,
   RefreshCcw,
   Image as ImageIcon
+=======
+  RefreshCcw, 
+  Search, 
+  Loader2,
+  Heart
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -382,18 +389,28 @@ export const AdminDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-white mx-auto" />
-          <p className="text-white/40 font-mono text-xs uppercase tracking-widest">Initializing Engine...</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-2 border-muted border-t-primary animate-spin" />
+          <Heart className="absolute inset-0 m-auto h-6 w-6 text-primary animate-pulse" />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground animate-pulse">
+            Synchronizing Admin Data...
+          </p>
+          <p className="text-[9px] text-muted-foreground italic">Vow Vantage Platform</p>
         </div>
       </div>
     );
   }
 
   return (
+<<<<<<< HEAD
     <div className="bg-[#f8f7f5] text-[#0a0a0a] font-sans">
       {/* Sub-navigation for Admin */}
+=======
+    <div className="bg-background text-foreground font-sans">
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
       <div className="mb-8 flex flex-wrap gap-2 border-b border-stone-200 pb-4">
         {[
           { id: 'users', label: 'Users', icon: Users },
@@ -406,8 +423,13 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab(item.id)}
             className={`flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest font-bold transition-all border ${
               activeTab === item.id 
+<<<<<<< HEAD
                 ? 'bg-black text-white border-black' 
                 : 'bg-white text-stone-400 border-stone-200 hover:text-black hover:border-black'
+=======
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm' 
+                : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground'
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
             }`}
           >
             <item.icon className="h-3 w-3" />
@@ -416,6 +438,7 @@ export const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
+<<<<<<< HEAD
       {/* Main Content Area */}
       <div className="">
         <header className="mb-12 flex justify-between items-end">
@@ -449,6 +472,36 @@ export const AdminDashboard: React.FC = () => {
             </Button>
           </div>
         </header>
+=======
+      <header className="mb-12 flex justify-between items-end">
+        <div>
+          <h1 className="text-5xl font-serif italic mb-2 text-foreground">
+            {activeTab === 'users' && 'User Management'}
+            {activeTab === 'codes' && 'Access Control'}
+            {activeTab === 'modules' && 'Dynamic UI Builder'}
+            {activeTab === 'feedback' && 'Feedback Inbox'}
+          </h1>
+          <p className="text-muted-foreground uppercase tracking-widest text-[10px] font-bold">
+            Administer your platform settings and user data
+          </p>
+        </div>
+        
+        <div className="flex gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search..." 
+              className="pl-10 h-10 w-64 rounded-none border-input bg-background text-foreground"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" className="h-10 rounded-none border-input bg-card hover:bg-accent text-foreground" onClick={fetchAllData}>
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        </div>
+      </header>
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
 
         {/* --- Tab Content --- */}
 

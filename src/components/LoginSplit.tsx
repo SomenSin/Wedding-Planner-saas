@@ -74,7 +74,7 @@ export const LoginSplit: React.FC = () => {
         }
       } else {
         if (isLogin) {
-          toast.success('Welcome back to VowVantage');
+          toast.success('Welcome back to Vow Vantage');
         } else {
           toast.success('Account created successfully!', {
             description: 'A verification link has been sent to your email. Please confirm it to complete your registration.',
@@ -100,7 +100,7 @@ export const LoginSplit: React.FC = () => {
             <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center">
               <Heart className="w-4 h-4 text-white" />
             </div>
-            <span className="text-sm font-medium tracking-[0.2em] uppercase">VowVantage</span>
+            <span className="text-sm font-medium tracking-[0.2em] uppercase">Vow Vantage</span>
           </div>
           
           <motion.h1 
@@ -123,7 +123,7 @@ export const LoginSplit: React.FC = () => {
         <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
         
         <div className="relative z-10 flex items-center gap-8 text-[10px] uppercase tracking-[0.2em] text-white/40">
-          <span>© 2026 VowVantage</span>
+          <span>© 2026 Vow Vantage</span>
           <span>Privacy Policy</span>
           <span>Terms of Service</span>
         </div>
@@ -153,7 +153,7 @@ export const LoginSplit: React.FC = () => {
             <p className="text-muted-foreground">
               {isLogin 
                 ? 'Please enter your details to access your dashboard.' 
-                : 'Join VowVantage to start planning your perfect day.'}
+                : 'Join Vow Vantage to start planning your perfect day.'}
             </p>
           </div>
 
@@ -165,7 +165,7 @@ export const LoginSplit: React.FC = () => {
               <Input 
                 id="email" 
                 type="email" 
-                placeholder="hello@vowvantage.com" 
+                placeholder="hello@vow-vantage.com" 
                 className="h-12 bg-white border-stone-200 focus:ring-black rounded-none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

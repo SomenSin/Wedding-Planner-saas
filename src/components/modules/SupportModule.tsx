@@ -88,74 +88,74 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div className="flex flex-col items-center justify-center text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-zinc-900 text-white shadow-xl">
+        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-xl">
           <MessageSquare className="h-8 w-8" />
         </div>
-        <h2 className="mt-6 text-3xl font-bold tracking-tight">Feedback & Support</h2>
-        <p className="mt-2 text-zinc-500">Help us make VowVantage even better for your big day.</p>
+        <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">Feedback & Support</h2>
+        <p className="mt-2 text-muted-foreground">Help us make Vow Vantage even better for your big day.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Info Cards */}
         <div className="space-y-4 lg:col-span-1">
-          <Card className="rounded-3xl border-none bg-zinc-50 p-6 shadow-sm">
+          <Card className="rounded-3xl border-none bg-muted/50 p-6 shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-zinc-600 shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
                 <Bug className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-zinc-900">Report a Bug</h3>
-                <p className="text-xs text-zinc-400">Something not working?</p>
+                <h3 className="text-sm font-bold text-foreground">Report a Bug</h3>
+                <p className="text-xs text-muted-foreground">Something not working?</p>
               </div>
             </div>
           </Card>
-          <Card className="rounded-3xl border-none bg-zinc-50 p-6 shadow-sm">
+          <Card className="rounded-3xl border-none bg-muted/50 p-6 shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-zinc-600 shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
                 <Lightbulb className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-zinc-900">Feature Request</h3>
-                <p className="text-xs text-zinc-400">Have a great idea?</p>
+                <h3 className="text-sm font-bold text-foreground">Feature Request</h3>
+                <p className="text-xs text-muted-foreground">Have a great idea?</p>
               </div>
             </div>
           </Card>
-          <Card className="rounded-3xl border-none bg-zinc-50 p-6 shadow-sm">
+          <Card className="rounded-3xl border-none bg-muted/50 p-6 shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-zinc-600 shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-background text-foreground shadow-sm">
                 <HelpCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-zinc-900">General Question</h3>
-                <p className="text-xs text-zinc-400">Need some help?</p>
+                <h3 className="text-sm font-bold text-foreground">General Question</h3>
+                <p className="text-xs text-muted-foreground">Need some help?</p>
               </div>
             </div>
           </Card>
         </div>
 
         {/* Feedback Form */}
-        <Card className="rounded-3xl border-none bg-white shadow-sm lg:col-span-2">
+        <Card className="rounded-3xl border border-border bg-card shadow-sm lg:col-span-2">
           <form onSubmit={handleSubmit}>
             <CardHeader>
-              <CardTitle>Submit Feedback</CardTitle>
-              <CardDescription>Tell us what's on your mind.</CardDescription>
+              <CardTitle className="text-foreground">Submit Feedback</CardTitle>
+              <CardDescription className="text-muted-foreground">Tell us what's on your mind.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Subject</Label>
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Subject</Label>
                   <Input 
                     placeholder="Brief summary..." 
-                    className="h-12 rounded-xl border-zinc-100 bg-zinc-50"
+                    className="h-12 rounded-xl border-input bg-background"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Category</Label>
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Category</Label>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="h-12 rounded-xl border-zinc-100 bg-zinc-50">
+                    <SelectTrigger className="h-12 rounded-xl border-input bg-background">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -168,10 +168,22 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
               </div>
 
               <div className="space-y-2">
+<<<<<<< HEAD
                 <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Description</Label>
                 <Textarea 
                   placeholder="Tell us more details..." 
                   className="min-h-[150px] rounded-2xl border-zinc-100 bg-zinc-50 p-4"
+=======
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Description</Label>
+                  <span className={`text-[10px] font-bold ${content.length >= 1000 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {content.length} / 1000
+                  </span>
+                </div>
+                <Textarea 
+                  placeholder="Tell us more details..." 
+                  className="min-h-[150px] rounded-2xl border-input bg-background p-4 transition-all focus:bg-background"
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   required
@@ -179,7 +191,7 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Attachments</Label>
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Attachments</Label>
                 <div className="relative">
                   <input 
                     type="file" 
@@ -188,13 +200,13 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
                     onChange={handleFileChange}
                     accept="image/*"
                   />
-                  <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-100 bg-zinc-50/50 py-8 text-center transition-colors hover:bg-zinc-50">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-zinc-400 shadow-sm">
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/20 py-8 text-center transition-colors hover:bg-muted/30">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-sm">
                       <Upload className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-zinc-900">Drag & Drop or Click to Upload</p>
-                      <p className="text-xs text-zinc-400">Screenshots or images (Max 5MB each)</p>
+                      <p className="text-sm font-bold text-foreground">Drag & Drop or Click to Upload</p>
+                      <p className="text-xs text-muted-foreground">Screenshots or images (Max 5MB each)</p>
                     </div>
                   </div>
                 </div>
@@ -202,8 +214,24 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
                 {files.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-3">
                     {files.map((file, i) => (
+<<<<<<< HEAD
                       <div key={i} className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-zinc-100">
                         <ImageIcon className="h-8 w-8 text-zinc-300" />
+=======
+                      <div key={i} className="group relative h-20 w-32 overflow-hidden rounded-2xl border border-border bg-muted/50">
+                        {previewUrls[i] ? (
+                          <img 
+                            src={previewUrls[i]} 
+                            alt={`Preview ${i}`} 
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                         <button 
                           type="button"
                           onClick={() => removeFile(i)}
@@ -220,10 +248,10 @@ export const SupportModule: React.FC<SupportModuleProps> = ({
                 )}
               </div>
             </CardContent>
-            <CardFooter className="border-t border-zinc-50 px-8 py-6">
+            <CardFooter className="border-t border-border px-8 py-6">
               <Button 
                 type="submit" 
-                className="h-12 w-full rounded-xl bg-zinc-900 text-white hover:bg-zinc-800"
+                className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

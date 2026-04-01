@@ -153,7 +153,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 <Button onClick={() => {
                   onUpdateWeddingDetails(editDetails);
                   setIsEditing(false);
-                }} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
+                }} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Save Changes</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -195,41 +195,49 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Button 
           variant="outline" 
-          className="h-24 flex-col gap-2 rounded-2xl border-zinc-200 bg-white hover:bg-zinc-50"
+          className="h-24 flex-col gap-2 rounded-2xl border-border bg-card hover:bg-accent hover:text-accent-foreground"
           onClick={() => onQuickAction('add-guest')}
         >
-          <Plus className="h-6 w-6 text-zinc-600" />
-          <span className="font-medium">Add Guest</span>
+          <Plus className="h-6 w-6 text-muted-foreground" />
+          <span className="font-medium text-foreground">Add Guest</span>
         </Button>
         <Button 
           variant="outline" 
-          className="h-24 flex-col gap-2 rounded-2xl border-zinc-200 bg-white hover:bg-zinc-50"
+          className="h-24 flex-col gap-2 rounded-2xl border-border bg-card hover:bg-accent hover:text-accent-foreground"
           onClick={() => onQuickAction('log-expense')}
         >
-          <Plus className="h-6 w-6 text-zinc-600" />
-          <span className="font-medium">Log Expense</span>
+          <Plus className="h-6 w-6 text-muted-foreground" />
+          <span className="font-medium text-foreground">Log Expense</span>
         </Button>
         <Button 
           variant="outline" 
-          className="h-24 flex-col gap-2 rounded-2xl border-zinc-200 bg-white hover:bg-zinc-50"
+          className="h-24 flex-col gap-2 rounded-2xl border-border bg-card hover:bg-accent hover:text-accent-foreground"
           onClick={() => onQuickAction('check-task')}
         >
-          <CheckSquare className="h-6 w-6 text-zinc-600" />
-          <span className="font-medium">Check off Task</span>
+          <CheckSquare className="h-6 w-6 text-muted-foreground" />
+          <span className="font-medium text-foreground">Check off Task</span>
         </Button>
       </div>
 
+<<<<<<< HEAD
       {/* Mini-Widgets */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
+=======
+      {/* Summary Widgets Grid */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Budget Status */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <DollarSign className="h-4 w-4" />
               Budget Spent
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
+<<<<<<< HEAD
               <span className="text-3xl font-semibold text-zinc-900">{budgetSpentPercent}%</span>
               <span className="text-xs text-zinc-400">of total budget</span>
             </div>
@@ -244,14 +252,34 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         </Card>
 
         <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
+=======
+              <span className="text-3xl font-semibold text-foreground">{budgetSpentPercent}%</span>
+              <span className="text-xs text-muted-foreground">spent of total</span>
+            </div>
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div 
+                className="h-full bg-primary transition-all duration-700" 
+                style={{ width: `${budgetSpentPercent}%` }} 
+              />
+            </div>
+            <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+              Spent: {formatCurrency(spentBudget)}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Guest RSVPs */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Users className="h-4 w-4" />
               RSVPs Accepted
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
+<<<<<<< HEAD
               <span className="text-3xl font-semibold text-zinc-900">{rsvpsAccepted}</span>
               <span className="text-xs text-zinc-400">out of {guestCount} guests</span>
             </div>
@@ -260,20 +288,145 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 <div 
                   key={i} 
                   className={`h-2 flex-1 rounded-full ${i < (rsvpsAccepted / (guestCount || 1) * 10) ? 'bg-zinc-900' : 'bg-zinc-200'}`} 
+=======
+              <span className="text-3xl font-semibold text-foreground">{rsvpsAccepted}</span>
+              <span className="text-xs text-muted-foreground">accepted of {guestCount}</span>
+            </div>
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div 
+                className="h-full bg-primary transition-all duration-700" 
+                style={{ width: `${guestCount > 0 ? (rsvpsAccepted / guestCount) * 100 : 0}%` }} 
+              />
+            </div>
+            <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+              Pending: {guestCount - rsvpsAccepted - guests.filter(g => g.rsvp_status === 'declined').length} response(s)
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Registry & Gifts */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Gift className="h-4 w-4" />
+              Gift Registry
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-semibold text-foreground">{registryItems.length}</span>
+              <span className="text-xs text-muted-foreground">items in list</span>
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              <span className="font-bold text-foreground">{registryItems.filter(i => i.is_purchased).length}</span> {registryItems.filter(i => i.is_purchased).length === 1 ? 'gift' : 'gifts'} received so far
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+              Cash Received: {formatCurrency(registryItems.reduce((acc, current) => acc + (current.price || 0), 0))} value
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Vendors */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              Vendors Hired
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-semibold text-foreground">{vendors.length}</span>
+              <span className="text-xs text-muted-foreground">Total vendors</span>
+            </div>
+            <div className="mt-4 flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-bold text-foreground">{vendors.filter(v => v.status === 'hired').length}</span> confirmed hired
+              </p>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div 
+                  className="h-full bg-primary transition-all" 
+                  style={{ width: `${vendors.length > 0 ? (vendors.filter(v => v.status === 'hired').length / vendors.length) * 100 : 0}%` }} 
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                 />
               ))}
             </div>
           </CardContent>
         </Card>
 
+<<<<<<< HEAD
         <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
+=======
+        {/* Drink Calculator Summary */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Wine className="h-4 w-4" />
+              Drink Estimations
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-semibold text-foreground">
+                {totalDrinksFromCalculator > 0 ? totalDrinksFromCalculator : Math.round(totalHeadcount * 4)}
+              </span>
+              <span className="text-xs text-muted-foreground">total drinks est.</span>
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground leading-tight">
+              Based on {totalDrinksFromCalculator > 0 ? 'calculator list' : `${totalHeadcount} guests`}
+            </p>
+            <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+              Breakdown: 50% Soft Drinks, 20% Beer, 15% Wine, 10% Spirits, 5% Others
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Itinerary & Tasks */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Wedding Day Itinerary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="space-y-4">
+              {weddingDayItems.length > 0 ? (
+                <div className="space-y-3">
+                  {weddingDayItems.map((item, i) => (
+                    <div key={`itin-${i}`} className="flex items-start gap-3">
+                      <div className="flex flex-col items-center pt-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        {i !== weddingDayItems.length - 1 && <div className="h-4 w-px bg-border mt-1" />}
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="truncate text-xs font-bold text-foreground uppercase tracking-wide leading-none">{item.activity || item.title}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">{item.time_text} • {item.location || 'Main Venue'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-4 text-center">
+                  <Clock className="h-8 w-8 text-muted/20 mb-2" />
+                  <p className="text-[10px] text-muted-foreground italic">No wedding day events scheduled</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Master Checklist */}
+        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5 md:col-span-full lg:col-span-1">
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <CheckSquare className="h-4 w-4" />
               Upcoming Tasks
             </CardTitle>
           </CardHeader>
           <CardContent>
+<<<<<<< HEAD
             <div className="space-y-3">
               {upcomingTasks.length > 0 ? (
                 upcomingTasks.slice(0, 3).map((task, i) => (
@@ -286,6 +439,32 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 <p className="text-sm text-zinc-400 italic">All caught up!</p>
               )}
             </div>
+=======
+            {(() => {
+              const allItems = checklistCategories.flatMap(c => c.checklist_items || []);
+              const completed = allItems.filter(i => i.completed).length;
+              const total = allItems.length;
+              const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+              
+              return (
+                <>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-semibold text-foreground">{percent}%</span>
+                    <span className="text-xs text-muted-foreground">overall roadmap</span>
+                  </div>
+                  <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div 
+                      className="h-full bg-primary transition-all duration-1000" 
+                      style={{ width: `${percent}%` }} 
+                    />
+                  </div>
+                  <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                    {completed} of {total} items completed
+                  </p>
+                </>
+              );
+            })()}
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           </CardContent>
         </Card>
       </div>

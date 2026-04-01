@@ -194,9 +194,9 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
           <p className="text-zinc-500">Track your wedding investment and expenses.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Label className="text-xs uppercase tracking-widest font-bold text-zinc-400">Currency</Label>
+          <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Currency</Label>
           <Select value={currency} onValueChange={onUpdateCurrency}>
-            <SelectTrigger className="w-[180px] rounded-xl border-zinc-200 bg-white">
+            <SelectTrigger className="w-[180px] rounded-xl border-input bg-background">
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
@@ -212,12 +212,12 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="rounded-3xl border-none bg-zinc-900 p-2 text-white shadow-xl">
+        <Card className="rounded-3xl border-none bg-primary p-2 text-primary-foreground shadow-xl">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-zinc-400">Total Budget</CardTitle>
-              <div className="rounded-xl bg-zinc-800 p-2">
-                <DollarSign className="h-4 w-4 text-zinc-400" />
+              <CardTitle className="text-sm font-medium text-primary-foreground/70">Total Budget</CardTitle>
+              <div className="rounded-xl bg-primary-foreground/10 p-2">
+                <DollarSign className="h-4 w-4 text-primary-foreground/70" />
               </div>
             </div>
           </CardHeader>
@@ -246,56 +246,56 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                 </Button>
               </div>
             )}
-            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-primary-foreground/20">
               <div 
-                className={`h-full transition-all duration-500 ${stats.overBudget ? 'bg-red-500' : 'bg-white'}`} 
+                className={`h-full transition-all duration-500 ${stats.overBudget ? 'bg-destructive' : 'bg-primary-foreground'}`} 
                 style={{ width: `${Math.min(stats.percentSpent, 100)}%` }} 
               />
             </div>
-            <p className="mt-2 text-xs text-zinc-500">{Math.round(stats.percentSpent)}% of budget allocated</p>
+            <p className="mt-2 text-xs text-primary-foreground/60">{Math.round(stats.percentSpent)}% of budget allocated</p>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-none bg-white p-2 shadow-sm">
+        <Card className="rounded-3xl border border-border bg-card p-2 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-zinc-500">Actual Spent</CardTitle>
-              <div className="rounded-xl bg-zinc-50 p-2">
-                <TrendingUp className="h-4 w-4 text-zinc-400" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Actual Spent</CardTitle>
+              <div className="rounded-xl bg-muted p-2">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-serif italic text-zinc-900">{formatCurrency(stats.totalActual)}</div>
+            <div className="text-3xl font-serif italic text-foreground">{formatCurrency(stats.totalActual)}</div>
             <div className="mt-4 flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-0.5 font-medium text-zinc-900">
+              <span className="flex items-center gap-0.5 font-medium text-foreground">
                 <ArrowUpRight className="h-3 w-3" />
                 {formatCurrency(stats.totalActual - stats.totalEstimated)}
               </span>
-              <span className="text-zinc-400 text-[10px] uppercase tracking-wider">vs Estimated</span>
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">vs Estimated</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-none bg-white p-2 shadow-sm">
+        <Card className="rounded-3xl border border-border bg-card p-2 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-zinc-500">Remaining</CardTitle>
-              <div className="rounded-xl bg-zinc-50 p-2">
-                <AlertCircle className="h-4 w-4 text-zinc-400" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
+              <div className="rounded-xl bg-muted p-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-serif italic ${stats.overBudget ? 'text-red-500' : 'text-zinc-900'}`}>
+            <div className={`text-3xl font-serif italic ${stats.overBudget ? 'text-destructive' : 'text-foreground'}`}>
               {formatCurrency(stats.remaining)}
             </div>
             <div className="mt-4 flex items-center gap-2 text-xs">
-              <span className={`flex items-center gap-0.5 font-medium ${stats.overBudget ? 'text-red-500' : 'text-emerald-600'}`}>
+              <span className={`flex items-center gap-0.5 font-medium ${stats.overBudget ? 'text-destructive' : 'text-emerald-600'}`}>
                 {stats.overBudget ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                 {Math.abs(Math.round(100 - stats.percentSpent))}%
               </span>
-              <span className="text-zinc-400 text-[10px] uppercase tracking-wider">of total budget</span>
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">of total budget</span>
             </div>
           </CardContent>
         </Card>
@@ -303,11 +303,12 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <Card className="rounded-3xl border-none bg-white shadow-sm">
+        <Card className="rounded-3xl border border-border bg-card shadow-sm">
           <CardHeader>
-            <CardTitle>Spending by Category</CardTitle>
-            <CardDescription>Distribution of actual costs across categories.</CardDescription>
+            <CardTitle className="text-foreground">Spending by Category</CardTitle>
+            <CardDescription className="text-muted-foreground">Distribution of actual costs across categories.</CardDescription>
           </CardHeader>
+<<<<<<< HEAD
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -331,28 +332,77 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                 <Legend verticalAlign="bottom" height={36} />
               </PieChart>
             </ResponsiveContainer>
+=======
+          <CardContent className="flex flex-col h-[400px]">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: '1px solid var(--border)', 
+                      backgroundColor: 'var(--card)',
+                      color: 'var(--card-foreground)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+                    }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-auto grid grid-cols-2 gap-4 text-center border-t border-border pt-6">
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalEstimated)}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mt-1">Total Estimated</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalActual)}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mt-1">Total Actual</span>
+              </div>
+            </div>
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-none bg-white shadow-sm">
+        <Card className="rounded-3xl border border-border bg-card shadow-sm">
           <CardHeader>
-            <CardTitle>Estimated vs Actual</CardTitle>
-            <CardDescription>Comparison of planned budget and real expenses.</CardDescription>
+            <CardTitle className="text-foreground">Estimated vs Actual</CardTitle>
+            <CardDescription className="text-muted-foreground">Comparison of planned budget and real expenses.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={12} width={100} />
                 <Tooltip 
                   cursor={{fill: 'transparent'}} 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: '1px solid var(--border)', 
+                    backgroundColor: 'var(--card)',
+                    color: 'var(--card-foreground)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+                  }}
                 />
                 <Legend verticalAlign="bottom" height={36} />
-                <Bar dataKey="estimated" fill="#d4d4d8" radius={[0, 4, 4, 0]} barSize={12} name="Estimated" />
-                <Bar dataKey="actual" fill="#18181b" radius={[0, 4, 4, 0]} barSize={12} name="Actual" />
+                <Bar dataKey="estimated" fill="var(--muted)" radius={[0, 4, 4, 0]} barSize={12} name="Estimated" />
+                <Bar dataKey="actual" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={12} name="Actual" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -360,7 +410,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
       </div>
 
       {/* Ledger Table */}
-      <Card className="rounded-3xl border-none bg-white shadow-sm">
+      <Card className="rounded-3xl border border-border bg-card shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-100 pb-6">
           <div>
             <CardTitle>Budget Ledger</CardTitle>
@@ -373,7 +423,7 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
             </Button>
             
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger render={<Button size="sm" className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">
+              <DialogTrigger render={<Button size="sm" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Expense
               </Button>} />
@@ -425,10 +475,65 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                  <Button onClick={handleAddExpense} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Add Expense</Button>
+                  <Button onClick={handleAddExpense} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Add Expense</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+<<<<<<< HEAD
+=======
+
+            <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+              <DialogContent className="rounded-3xl">
+                <DialogHeader>
+                  <DialogTitle className="font-serif italic text-2xl">Edit Expense</DialogTitle>
+                </DialogHeader>
+                {editingItem && (
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Input 
+                        value={editingItem.category}
+                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Estimated Cost ({currency})</Label>
+                        <Input 
+                          type="number" 
+                          value={editingItem.estimated_cost === 0 ? '' : editingItem.estimated_cost}
+                          onChange={(e) => setEditingItem({ ...editingItem, estimated_cost: Number(e.target.value) })}
+                          className="rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Actual Cost ({currency})</Label>
+                        <Input 
+                          type="number" 
+                          value={editingItem.actual_cost === 0 ? '' : editingItem.actual_cost}
+                          onChange={(e) => setEditingItem({ ...editingItem, actual_cost: Number(e.target.value) })}
+                          className="rounded-xl"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Expense Name</Label>
+                      <Input 
+                        value={editingItem.item_name || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, item_name: e.target.value })}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditingItem(null)} className="rounded-xl">Cancel</Button>
+                  <Button onClick={handleEditExpense} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -450,10 +555,22 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                   const percentOfEstimated = item.estimated_cost > 0 ? (item.actual_cost / item.estimated_cost) * 100 : 0;
                   
                   return (
+<<<<<<< HEAD
                     <TableRow key={item.id} className="group transition-colors hover:bg-zinc-50">
                       <TableCell className="font-medium text-zinc-900">{item.category}</TableCell>
                       <TableCell className="text-zinc-500">{formatCurrency(item.estimated_cost)}</TableCell>
                       <TableCell className={`font-semibold ${isOver ? 'text-red-500' : 'text-zinc-900'}`}>
+=======
+                    <TableRow key={item.id} className="group transition-colors hover:bg-accent/50">
+                      <TableCell className="font-medium text-foreground">
+                        <div className="flex flex-col">
+                           <span>{item.category}</span>
+                           <span className="text-xs text-muted-foreground font-normal">{item.item_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatCurrency(item.estimated_cost)}</TableCell>
+                      <TableCell className={`font-semibold ${isOver ? 'text-destructive' : 'text-foreground'}`}>
+>>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                         {formatCurrency(item.actual_cost)}
                       </TableCell>
                       <TableCell>
@@ -473,13 +590,13 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                             <div 
-                              className={`h-full transition-all duration-500 ${isOver ? 'bg-red-500' : 'bg-zinc-900'}`} 
+                              className={`h-full transition-all duration-500 ${isOver ? 'bg-destructive' : 'bg-primary'}`} 
                               style={{ width: `${Math.min(percentOfEstimated, 100)}%` }} 
                             />
                           </div>
-                          <span className="text-xs font-mono text-zinc-400">{Math.round(percentOfEstimated)}%</span>
+                          <span className="text-xs font-mono text-muted-foreground">{Math.round(percentOfEstimated)}%</span>
                         </div>
                       </TableCell>
                       <TableCell>

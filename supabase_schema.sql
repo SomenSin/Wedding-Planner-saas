@@ -1,4 +1,4 @@
-# Database Schema for VowVantage
+# Database Schema for Vow Vantage
 
 -- Users table (Extends Supabase Auth)
 -- role: 'super_admin' | 'couple'
