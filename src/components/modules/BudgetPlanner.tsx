@@ -38,7 +38,8 @@ import {
   ArrowDownRight,
   Edit2,
   Check,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { 
@@ -63,10 +64,10 @@ import { supabase } from '@/lib/supabase';
 interface BudgetItem {
   id: string;
   category: string;
+  item_name: string;
   estimated_cost: number;
   actual_cost: number;
-  paid_amount: number;
-  notes: string;
+  is_paid: boolean;
 }
 
 interface BudgetPlannerProps {
@@ -81,7 +82,15 @@ interface BudgetPlannerProps {
   refreshData: () => void;
 }
 
-const COLORS = ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7', '#f4f4f5'];
+const COLORS = [
+  '#18181b', // Zinc 900
+  '#c5a880', // Champagne Gold
+  '#e2c2c6', // Blush Pink
+  '#8a9a86', // Sage Green
+  '#a0aba5', // Dusty Blue/Gray
+  '#e8e4e1', // Warm Linen
+  '#52525b'  // Zinc 600
+];
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -107,11 +116,13 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [tempBudget, setTempBudget] = useState(totalBudget);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [newItem, setNewItem] = useState({
     category: '',
+    item_name: '',
     estimated_cost: 0,
     actual_cost: 0,
-    notes: ''
+    is_paid: false
   });
 
   const stats = useMemo(() => {
@@ -168,10 +179,12 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
     const { data, error } = await supabase
       .from('budget_items')
       .insert([{
-        ...newItem,
-        user_id: userId,
-        paid_amount: 0,
-        actual_cost: newItem.actual_cost || 0
+        category: newItem.category,
+        item_name: newItem.item_name || 'Expense',
+        estimated_cost: newItem.estimated_cost,
+        actual_cost: newItem.actual_cost,
+        is_paid: newItem.is_paid,
+        couple_id: userId
       }])
       .select();
 
@@ -180,9 +193,54 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
     } else {
       toast.success('Expense added');
       setIsAddDialogOpen(false);
-      setNewItem({ category: '', estimated_cost: 0, actual_cost: 0, notes: '' });
+      setNewItem({ category: '', item_name: '', estimated_cost: 0, actual_cost: 0, is_paid: false });
       refreshData();
     }
+  };
+
+  const handleEditExpense = () => {
+    if (!editingItem) return;
+    if (!editingItem.category) {
+      toast.error('Please enter a category');
+      return;
+    }
+    
+    onUpdateItem(editingItem.id, {
+      category: editingItem.category,
+      item_name: editingItem.item_name,
+      estimated_cost: editingItem.estimated_cost,
+      actual_cost: editingItem.actual_cost,
+      is_paid: editingItem.is_paid
+    });
+    
+    toast.success('Expense updated');
+    setEditingItem(null);
+  };
+
+  const handleExport = () => {
+    if (budgetItems.length === 0) {
+      toast.error('No expenses to export');
+      return;
+    }
+    
+    const headers = ['Category,Expense Name,Estimated Cost,Actual Cost,Status'];
+    const rows = budgetItems.map(item => {
+      const isOver = item.actual_cost > item.estimated_cost;
+      const status = isOver ? 'Over Budget' : 'On Track';
+      return `"${item.category || ''}","${item.item_name || ''}","${item.estimated_cost || 0}","${item.actual_cost || 0}","${status}"`;
+    });
+    const csvContent = headers.concat(rows).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "budget-ledger.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Budget exported successfully!');
   };
 
   return (
@@ -190,18 +248,18 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
       {/* Header with Currency Selector */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-serif italic text-zinc-900">Financial Hub</h2>
-          <p className="text-zinc-500">Track your wedding investment and expenses.</p>
+          <h2 className="text-3xl font-serif italic text-zinc-900 dark:text-white">Financial Hub</h2>
+          <p className="text-zinc-500 dark:text-zinc-400">Track your wedding investment and expenses.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Currency</Label>
+          <Label className="text-xs uppercase tracking-widest font-bold text-zinc-400">Currency</Label>
           <Select value={currency} onValueChange={onUpdateCurrency}>
-            <SelectTrigger className="w-[180px] rounded-xl border-input bg-background">
+            <SelectTrigger className="w-[180px] rounded-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 dark:text-white">
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800">
               {CURRENCIES.map(c => (
-                <SelectItem key={c.code} value={c.code}>
+                <SelectItem key={c.code} value={c.code} className="dark:text-white dark:focus:bg-zinc-800">
                   {c.name} ({c.symbol})
                 </SelectItem>
               ))}
@@ -212,12 +270,12 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="rounded-3xl border-none bg-primary p-2 text-primary-foreground shadow-xl">
+        <Card className="rounded-3xl border-none bg-zinc-900 dark:bg-zinc-950 p-2 text-white shadow-xl border dark:border-zinc-800">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-primary-foreground/70">Total Budget</CardTitle>
-              <div className="rounded-xl bg-primary-foreground/10 p-2">
-                <DollarSign className="h-4 w-4 text-primary-foreground/70" />
+              <CardTitle className="text-sm font-medium text-zinc-400">Total Budget</CardTitle>
+              <div className="rounded-xl bg-zinc-800 p-2">
+                <DollarSign className="h-4 w-4 text-zinc-400" />
               </div>
             </div>
           </CardHeader>
@@ -240,62 +298,62 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
               </div>
             ) : (
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-serif italic">{formatCurrency(totalBudget)}</div>
+                <div className="text-3xl font-serif italic text-white">{formatCurrency(totalBudget)}</div>
                 <Button size="icon" variant="ghost" onClick={() => { setTempBudget(totalBudget); setIsEditingBudget(true); }} className="text-zinc-500 hover:text-white">
                   <Edit2 className="h-4 w-4" />
                 </Button>
               </div>
             )}
-            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-primary-foreground/20">
+            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
               <div 
-                className={`h-full transition-all duration-500 ${stats.overBudget ? 'bg-destructive' : 'bg-primary-foreground'}`} 
+                className={`h-full transition-all duration-500 ${stats.overBudget ? 'bg-red-500' : 'bg-white'}`} 
                 style={{ width: `${Math.min(stats.percentSpent, 100)}%` }} 
               />
             </div>
-            <p className="mt-2 text-xs text-primary-foreground/60">{Math.round(stats.percentSpent)}% of budget allocated</p>
+            <p className="mt-2 text-xs text-zinc-500">{Math.round(stats.percentSpent)}% of budget allocated</p>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-border bg-card p-2 shadow-sm">
+        <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-2 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Actual Spent</CardTitle>
-              <div className="rounded-xl bg-muted p-2">
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Actual Spent</CardTitle>
+              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800 p-2">
+                <TrendingUp className="h-4 w-4 text-zinc-400" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-serif italic text-foreground">{formatCurrency(stats.totalActual)}</div>
+            <div className="text-3xl font-serif italic text-zinc-900 dark:text-white">{formatCurrency(stats.totalActual)}</div>
             <div className="mt-4 flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-0.5 font-medium text-foreground">
+              <span className="flex items-center gap-0.5 font-medium text-zinc-900 dark:text-zinc-100">
                 <ArrowUpRight className="h-3 w-3" />
                 {formatCurrency(stats.totalActual - stats.totalEstimated)}
               </span>
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">vs Estimated</span>
+              <span className="text-zinc-400 text-[10px] uppercase tracking-wider">vs Estimated</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-border bg-card p-2 shadow-sm">
+        <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-2 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
-              <div className="rounded-xl bg-muted p-2">
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Remaining</CardTitle>
+              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800 p-2">
+                <AlertCircle className="h-4 w-4 text-zinc-400" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-serif italic ${stats.overBudget ? 'text-destructive' : 'text-foreground'}`}>
+            <div className={`text-3xl font-serif italic ${stats.overBudget ? 'text-red-500' : 'text-zinc-900 dark:text-white'}`}>
               {formatCurrency(stats.remaining)}
             </div>
             <div className="mt-4 flex items-center gap-2 text-xs">
-              <span className={`flex items-center gap-0.5 font-medium ${stats.overBudget ? 'text-destructive' : 'text-emerald-600'}`}>
+              <span className={`flex items-center gap-0.5 font-medium ${stats.overBudget ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                 {stats.overBudget ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                 {Math.abs(Math.round(100 - stats.percentSpent))}%
               </span>
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">of total budget</span>
+              <span className="text-zinc-400 text-[10px] uppercase tracking-wider">of total budget</span>
             </div>
           </CardContent>
         </Card>
@@ -303,36 +361,11 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <Card className="rounded-3xl border border-border bg-card shadow-sm">
+        <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-foreground">Spending by Category</CardTitle>
-            <CardDescription className="text-muted-foreground">Distribution of actual costs across categories.</CardDescription>
+            <CardTitle className="dark:text-white">Spending by Category</CardTitle>
+            <CardDescription className="dark:text-zinc-400">Distribution of actual costs across categories.</CardDescription>
           </CardHeader>
-<<<<<<< HEAD
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
-=======
           <CardContent className="flex flex-col h-[400px]">
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -352,57 +385,44 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                   </Pie>
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ 
-                      borderRadius: '12px', 
-                      border: '1px solid var(--border)', 
-                      backgroundColor: 'var(--card)',
-                      color: 'var(--card-foreground)',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
-                    }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-auto grid grid-cols-2 gap-4 text-center border-t border-border pt-6">
+            <div className="mt-auto grid grid-cols-2 gap-4 text-center border-t border-zinc-100 dark:border-zinc-800 pt-6">
               <div className="flex flex-col">
-                <span className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalEstimated)}</span>
-                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mt-1">Total Estimated</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white">{formatCurrency(stats.totalEstimated)}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Total Estimated</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalActual)}</span>
-                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mt-1">Total Actual</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white">{formatCurrency(stats.totalActual)}</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 mt-1">Total Actual</span>
               </div>
             </div>
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-border bg-card shadow-sm">
+        <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-foreground">Estimated vs Actual</CardTitle>
-            <CardDescription className="text-muted-foreground">Comparison of planned budget and real expenses.</CardDescription>
+            <CardTitle className="dark:text-white">Estimated vs Actual</CardTitle>
+            <CardDescription className="dark:text-zinc-400">Comparison of planned budget and real expenses.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={12} width={100} />
                 <Tooltip 
                   cursor={{fill: 'transparent'}} 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: '1px solid var(--border)', 
-                    backgroundColor: 'var(--card)',
-                    color: 'var(--card-foreground)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
-                  }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Legend verticalAlign="bottom" height={36} />
-                <Bar dataKey="estimated" fill="var(--muted)" radius={[0, 4, 4, 0]} barSize={12} name="Estimated" />
-                <Bar dataKey="actual" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={12} name="Actual" />
+                <Bar dataKey="estimated" fill="#d4d4d8" radius={[0, 4, 4, 0]} barSize={12} name="Estimated" />
+                <Bar dataKey="actual" fill="#18181b" radius={[0, 4, 4, 0]} barSize={12} name="Actual" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -410,142 +430,139 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
       </div>
 
       {/* Ledger Table */}
-      <Card className="rounded-3xl border border-border bg-card shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-100 pb-6">
+      <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-6">
           <div>
-            <CardTitle>Budget Ledger</CardTitle>
-            <CardDescription>Detailed breakdown of all wedding expenses.</CardDescription>
+            <CardTitle className="dark:text-white">Budget Ledger</CardTitle>
+            <CardDescription className="dark:text-zinc-400">Detailed breakdown of all wedding expenses.</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl">
+            <Button variant="outline" size="sm" className="rounded-xl border-zinc-200 dark:border-zinc-800 dark:text-white" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
             
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger render={<Button size="sm" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+              <DialogTrigger render={<Button size="sm" className="rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Expense
               </Button>} />
-              <DialogContent className="rounded-3xl">
+              <DialogContent className="rounded-3xl dark:bg-zinc-900 dark:border-zinc-800">
                 <DialogHeader>
-                  <DialogTitle className="font-serif italic text-2xl">Add New Expense</DialogTitle>
+                  <DialogTitle className="font-serif italic text-2xl dark:text-white">Add New Expense</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Category</Label>
+                    <Label className="dark:text-zinc-300">Category</Label>
                     <Input 
                       placeholder="e.g. Venue, Catering, Flowers" 
                       value={newItem.category}
                       onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                      className="rounded-xl"
+                      className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Estimated Cost ({currency})</Label>
+                      <Label className="dark:text-zinc-300">Estimated Cost ({currency})</Label>
                       <Input 
                         type="number" 
                         placeholder="0"
                         value={newItem.estimated_cost === 0 ? '' : newItem.estimated_cost}
                         onChange={(e) => setNewItem({ ...newItem, estimated_cost: Number(e.target.value) })}
-                        className="rounded-xl"
+                        className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Actual Cost ({currency})</Label>
+                      <Label className="dark:text-zinc-300">Actual Cost ({currency})</Label>
                       <Input 
                         type="number" 
                         placeholder="0"
                         value={newItem.actual_cost === 0 ? '' : newItem.actual_cost}
                         onChange={(e) => setNewItem({ ...newItem, actual_cost: Number(e.target.value) })}
-                        className="rounded-xl"
+                        className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Notes</Label>
+                    <Label className="dark:text-zinc-300">Expense Name</Label>
                     <Input 
-                      placeholder="Optional notes" 
-                      value={newItem.notes}
-                      onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
-                      className="rounded-xl"
+                      placeholder="e.g. Venue Deposit" 
+                      value={newItem.item_name}
+                      onChange={(e) => setNewItem({ ...newItem, item_name: e.target.value })}
+                      className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     />
                   </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                  <Button onClick={handleAddExpense} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Add Expense</Button>
+                  <Button onClick={handleAddExpense} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Add Expense</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-<<<<<<< HEAD
-=======
 
             <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-              <DialogContent className="rounded-3xl">
+              <DialogContent className="rounded-3xl dark:bg-zinc-900 dark:border-zinc-800">
                 <DialogHeader>
-                  <DialogTitle className="font-serif italic text-2xl">Edit Expense</DialogTitle>
+                  <DialogTitle className="font-serif italic text-2xl dark:text-white">Edit Expense</DialogTitle>
                 </DialogHeader>
                 {editingItem && (
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label>Category</Label>
+                      <Label className="dark:text-zinc-300">Category</Label>
                       <Input 
                         value={editingItem.category}
                         onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                        className="rounded-xl"
+                        className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Estimated Cost ({currency})</Label>
+                        <Label className="dark:text-zinc-300">Estimated Cost ({currency})</Label>
                         <Input 
                           type="number" 
                           value={editingItem.estimated_cost === 0 ? '' : editingItem.estimated_cost}
                           onChange={(e) => setEditingItem({ ...editingItem, estimated_cost: Number(e.target.value) })}
-                          className="rounded-xl"
+                          className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Actual Cost ({currency})</Label>
+                        <Label className="dark:text-zinc-300">Actual Cost ({currency})</Label>
                         <Input 
                           type="number" 
                           value={editingItem.actual_cost === 0 ? '' : editingItem.actual_cost}
                           onChange={(e) => setEditingItem({ ...editingItem, actual_cost: Number(e.target.value) })}
-                          className="rounded-xl"
+                          className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Expense Name</Label>
+                      <Label className="dark:text-zinc-300">Expense Name</Label>
                       <Input 
                         value={editingItem.item_name || ''}
                         onChange={(e) => setEditingItem({ ...editingItem, item_name: e.target.value })}
-                        className="rounded-xl"
+                        className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                       />
                     </div>
                   </div>
                 )}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setEditingItem(null)} className="rounded-xl">Cancel</Button>
-                  <Button onClick={handleEditExpense} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Save Changes</Button>
+                  <Button onClick={handleEditExpense} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[200px] font-medium">Category</TableHead>
-                  <TableHead className="font-medium">Estimated Cost</TableHead>
-                  <TableHead className="font-medium">Actual Cost</TableHead>
-                  <TableHead className="font-medium">Status</TableHead>
-                  <TableHead className="w-[250px] font-medium">Progress</TableHead>
+                <TableRow className="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
+                  <TableHead className="w-[200px] font-medium text-zinc-500 dark:text-zinc-400">Category</TableHead>
+                  <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Estimated Cost</TableHead>
+                  <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Actual Cost</TableHead>
+                  <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Status</TableHead>
+                  <TableHead className="w-[250px] font-medium text-zinc-500 dark:text-zinc-400">Progress</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -555,33 +572,26 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                   const percentOfEstimated = item.estimated_cost > 0 ? (item.actual_cost / item.estimated_cost) * 100 : 0;
                   
                   return (
-<<<<<<< HEAD
-                    <TableRow key={item.id} className="group transition-colors hover:bg-zinc-50">
-                      <TableCell className="font-medium text-zinc-900">{item.category}</TableCell>
-                      <TableCell className="text-zinc-500">{formatCurrency(item.estimated_cost)}</TableCell>
-                      <TableCell className={`font-semibold ${isOver ? 'text-red-500' : 'text-zinc-900'}`}>
-=======
-                    <TableRow key={item.id} className="group transition-colors hover:bg-accent/50">
-                      <TableCell className="font-medium text-foreground">
+                    <TableRow key={item.id} className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800">
+                      <TableCell className="font-medium text-zinc-900 dark:text-white">
                         <div className="flex flex-col">
                            <span>{item.category}</span>
-                           <span className="text-xs text-muted-foreground font-normal">{item.item_name}</span>
+                           <span className="text-xs text-zinc-400 font-normal">{item.item_name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{formatCurrency(item.estimated_cost)}</TableCell>
-                      <TableCell className={`font-semibold ${isOver ? 'text-destructive' : 'text-foreground'}`}>
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+                      <TableCell className="text-zinc-500 dark:text-zinc-400">{formatCurrency(item.estimated_cost)}</TableCell>
+                      <TableCell className={`font-semibold ${isOver ? 'text-red-500' : 'text-zinc-900 dark:text-white'}`}>
                         {formatCurrency(item.actual_cost)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {isOver ? (
-                            <div className="flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-medium text-red-600 uppercase">
+                            <div className="flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-500/10 px-2.5 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 uppercase border border-red-100 dark:border-red-500/20">
                               <AlertCircle className="h-3 w-3" />
                               Over
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-600 uppercase">
+                            <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase border border-emerald-100 dark:border-emerald-500/20">
                               <TrendingUp className="h-3 w-3" />
                               On Track
                             </div>
@@ -590,24 +600,34 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                             <div 
-                              className={`h-full transition-all duration-500 ${isOver ? 'bg-destructive' : 'bg-primary'}`} 
+                              className={`h-full transition-all duration-500 ${isOver ? 'bg-red-500' : 'bg-zinc-900 dark:bg-white'}`} 
                               style={{ width: `${Math.min(percentOfEstimated, 100)}%` }} 
                             />
                           </div>
-                          <span className="text-xs font-mono text-muted-foreground">{Math.round(percentOfEstimated)}%</span>
+                          <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500">{Math.round(percentOfEstimated)}%</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => onDeleteItem(item.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            onClick={() => setEditingItem(item)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
+                            onClick={() => onDeleteItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

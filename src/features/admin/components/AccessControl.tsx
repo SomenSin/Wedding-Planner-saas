@@ -44,39 +44,39 @@ export const AccessControl: React.FC<AccessControlProps> = ({
     <div className="space-y-6">
       <div className="flex justify-end gap-3">
         <Dialog open={isAddingCode} onOpenChange={setIsAddingCode}>
-          <DialogTrigger render={<Button variant="outline" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+          <DialogTrigger render={<Button variant="outline" className="rounded-none bg-black dark:bg-white text-white dark:text-zinc-900 hover:bg-black/90 dark:hover:bg-zinc-100 border-black dark:border-white transition-all">
             <Plus className="mr-2 h-4 w-4" /> Create Custom Code
           </Button>} />
-          <DialogContent className="rounded-3xl">
+          <DialogContent className="rounded-none dark:bg-zinc-950 dark:border-zinc-800">
             <DialogHeader>
-              <DialogTitle className="font-serif italic text-2xl">Create Access Code</DialogTitle>
-              <DialogDescription className="uppercase tracking-widest text-[10px] font-bold text-muted-foreground">
+              <DialogTitle className="font-serif italic text-2xl dark:text-white">Create Access Code</DialogTitle>
+              <DialogDescription className="uppercase tracking-widest text-[10px] font-bold dark:text-zinc-500">
                 Manually define an access code for an upcoming event
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 flex flex-col gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Access Code</Label>
+                <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Access Code</Label>
                 <Input 
                   value={newManualCode} 
                   onChange={(e) => setNewManualCode(e.target.value.toUpperCase())}
                   placeholder="e.g. SMITH2026"
-                  className="rounded-xl border-input bg-background text-foreground uppercase"
+                  className="rounded-none border-stone-200 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white uppercase"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Event Name</Label>
+                <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Event Name</Label>
                 <Input 
                   value={newEventName} 
                   onChange={(e) => setNewEventName(e.target.value)}
                   placeholder="e.g. Sarah & John's Wedding"
-                  className="rounded-xl border-input bg-background text-foreground"
+                  className="rounded-none border-stone-200 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" className="rounded-xl font-medium" onClick={() => setIsAddingCode(false)}>Cancel</Button>
-              <Button className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-8" onClick={handleCreate}>
+              <Button variant="outline" className="rounded-none dark:border-zinc-800 dark:text-zinc-400" onClick={() => setIsAddingCode(false)}>Cancel</Button>
+              <Button className="rounded-none bg-black dark:bg-white text-white dark:text-zinc-900 hover:bg-black/90 dark:hover:bg-zinc-100 px-8" onClick={handleCreate}>
                 Create Code
               </Button>
             </DialogFooter>
@@ -84,35 +84,35 @@ export const AccessControl: React.FC<AccessControlProps> = ({
         </Dialog>
       </div>
 
-      <Card className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
+      <Card className="rounded-none border-stone-200 dark:border-zinc-800 shadow-sm overflow-hidden dark:bg-zinc-900 transition-colors">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-muted/50 border-b border-border">
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Code</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Wedding / Link</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Status</th>
-              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-muted-foreground text-right">Actions</th>
+            <tr className="bg-stone-50 dark:bg-zinc-800/50 border-b border-stone-200 dark:border-zinc-800">
+              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Code</th>
+              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Wedding / Link</th>
+              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Status</th>
+              <th className="px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
             {accessCodes.map((code) => (
-              <tr key={code.id} className="hover:bg-accent/50 transition-colors">
+              <tr key={code.id} className="hover:bg-stone-50/50 dark:hover:bg-zinc-800/50 transition-colors">
                 <td className="px-6 py-4">
-                  <span className="font-mono text-xl font-bold tracking-widest text-foreground">{code.code}</span>
+                  <span className="font-mono text-xl font-bold tracking-widest dark:text-white">{code.code}</span>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm font-bold text-foreground">{code.event_name || 'Unlinked Code'}</div>
-                  <div className="text-[10px] text-muted-foreground font-mono italic">ID: {code.linked_user_id || 'N/A'}</div>
+                  <div className="text-sm font-bold dark:text-zinc-200">{code.event_name || 'Unlinked Code'}</div>
+                  <div className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono italic">ID: {code.linked_user_id || 'N/A'}</div>
                 </td>
                 <td className="px-6 py-4">
-                  <Badge variant={code.is_active ? 'default' : 'outline'} className="rounded-xl uppercase text-[9px] tracking-widest border-none">
+                  <Badge variant={code.is_active ? 'default' : 'outline'} className="rounded-none uppercase text-[9px] tracking-widest">
                     {code.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" onClick={() => toggleCodeStatus(code.id, code.is_active)}>
-                      {code.is_active ? <XCircle className="h-4 w-4 text-muted-foreground" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                      {code.is_active ? <XCircle className="h-4 w-4 text-stone-400" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
                     </Button>
                     <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteCode(code.id)}>
                       <Trash2 className="h-4 w-4" />

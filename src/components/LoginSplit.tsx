@@ -26,7 +26,7 @@ export const LoginSplit: React.FC = () => {
           .from('access_codes')
           .select('*')
           .eq('code', accessCode)
-          .eq('status', 'active')
+          .eq('is_active', true)
           .single();
 
         if (codeError || !codeData) {
@@ -130,27 +130,27 @@ export const LoginSplit: React.FC = () => {
       </div>
 
       {/* Right Side: Auth Form */}
-      <div className="flex flex-col justify-center p-8 md:p-16 lg:p-24 bg-stone-50/50">
+      <div className="flex flex-col justify-center p-8 md:p-16 lg:p-24 bg-stone-50/50 dark:bg-zinc-950">
         <div className="max-w-md w-full mx-auto">
           <div className="mb-8">
             <div className="flex gap-4 mb-6">
               <button 
                 onClick={() => setIsLogin(true)}
-                className={`text-[11px] uppercase tracking-widest font-bold pb-2 border-b-2 transition-all ${isLogin ? 'border-black text-black' : 'border-transparent text-stone-400'}`}
+                className={`text-[11px] uppercase tracking-widest font-bold pb-2 border-b-2 transition-all ${isLogin ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-stone-400 dark:text-zinc-600'}`}
               >
                 Sign In
               </button>
               <button 
                 onClick={() => setIsLogin(false)}
-                className={`text-[11px] uppercase tracking-widest font-bold pb-2 border-b-2 transition-all ${!isLogin ? 'border-black text-black' : 'border-transparent text-stone-400'}`}
+                className={`text-[11px] uppercase tracking-widest font-bold pb-2 border-b-2 transition-all ${!isLogin ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-stone-400 dark:text-zinc-600'}`}
               >
                 Request Access
               </button>
             </div>
-            <h2 className="text-3xl font-serif italic mb-2">
+            <h2 className="text-3xl font-serif italic mb-2 dark:text-white">
               {isLogin ? 'Welcome Back' : 'Create Account'}
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground dark:text-zinc-500">
               {isLogin 
                 ? 'Please enter your details to access your dashboard.' 
                 : 'Join Vow Vantage to start planning your perfect day.'}
@@ -159,14 +159,14 @@ export const LoginSplit: React.FC = () => {
 
           <form onSubmit={handleAuth} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground">
+              <Label htmlFor="email" className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground dark:text-zinc-500">
                 Email Address
               </Label>
               <Input 
                 id="email" 
                 type="email" 
                 placeholder="hello@vow-vantage.com" 
-                className="h-12 bg-white border-stone-200 focus:ring-black rounded-none"
+                className="h-12 bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 dark:text-white focus:ring-black dark:focus:ring-white rounded-none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -175,18 +175,18 @@ export const LoginSplit: React.FC = () => {
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label htmlFor="password" className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground">
+                <Label htmlFor="password" className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground dark:text-zinc-500">
                   Password
                 </Label>
                 {isLogin && (
-                  <a href="#" className="text-[10px] uppercase tracking-widest font-bold hover:underline">Forgot?</a>
+                  <a href="#" className="text-[10px] uppercase tracking-widest font-bold dark:text-zinc-400 hover:underline">Forgot?</a>
                 )}
               </div>
               <Input 
                 id="password" 
                 type="password" 
                 placeholder="••••••••" 
-                className="h-12 bg-white border-stone-200 focus:ring-black rounded-none"
+                className="h-12 bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 dark:text-white focus:ring-black dark:focus:ring-white rounded-none"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -195,14 +195,14 @@ export const LoginSplit: React.FC = () => {
 
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="accessCode" className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground">
+                <Label htmlFor="accessCode" className="text-[11px] uppercase tracking-widest font-semibold text-muted-foreground dark:text-zinc-500">
                   Access Code
                 </Label>
                 <Input 
                   id="accessCode" 
                   type="text" 
                   placeholder="Enter your access code" 
-                  className="h-12 bg-white border-stone-200 focus:ring-black rounded-none"
+                  className="h-12 bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 dark:text-white focus:ring-black dark:focus:ring-white rounded-none"
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
                   required
@@ -212,7 +212,7 @@ export const LoginSplit: React.FC = () => {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-black hover:bg-black/90 text-white rounded-none group transition-all"
+              className="w-full h-12 bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-zinc-100 text-white dark:text-zinc-900 rounded-none group transition-all"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -226,15 +226,15 @@ export const LoginSplit: React.FC = () => {
             </Button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-stone-200 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="mt-8 pt-8 border-t border-stone-200 dark:border-zinc-800 text-center">
+            <p className="text-sm text-muted-foreground dark:text-zinc-500">
               {isLogin ? (
                 <>
                   Don't have an account?{' '}
                   <button 
                     type="button"
                     onClick={() => setIsLogin(false)} 
-                    className="font-bold text-black hover:underline"
+                    className="font-bold text-black dark:text-white hover:underline"
                   >
                     Request Access
                   </button>
@@ -245,7 +245,7 @@ export const LoginSplit: React.FC = () => {
                   <button 
                     type="button"
                     onClick={() => setIsLogin(true)} 
-                    className="font-bold text-black hover:underline"
+                    className="font-bold text-black dark:text-white hover:underline"
                   >
                     Sign In
                   </button>

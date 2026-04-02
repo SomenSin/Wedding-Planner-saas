@@ -26,7 +26,9 @@ import {
   Heart,
   TrendingUp,
   ArrowRight,
-  Trash2
+  Trash2,
+  Edit2,
+  Download
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -43,11 +45,11 @@ import { supabase } from '@/lib/supabase';
 
 interface RegistryItem {
   id: string;
-  gifter_name: string;
-  gift_description: string;
-  cash_amount: number;
-  date_received: string;
-  thank_you_sent: boolean;
+  purchased_by: string;
+  title: string;
+  price: number;
+  created_at: string;
+  is_purchased: boolean;
 }
 
 interface RegistryManagerProps {
@@ -72,26 +74,13 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
   refreshData
 }) => {
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<RegistryItem | null>(null);
   const [newItem, setNewItem] = useState({
-    gifter_name: '',
-    gift_description: '',
-    cash_amount: 0,
-    date_received: new Date().toISOString().split('T')[0]
+    purchased_by: '',
+    title: '',
+    price: 0,
+    created_at: new Date().toISOString().split('T')[0]
   });
-
-  const recommendedGifts = guestCount * 2;
-  
-  const tiers = [
-    { label: `Under ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(50)}`, count: Math.round(recommendedGifts * 0.2), icon: '🥉' },
-    { label: `${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(50)} - ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(100)}`, count: Math.round(recommendedGifts * 0.4), icon: '🥈' },
-    { label: `${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(100)} - ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(250)}`, count: Math.round(recommendedGifts * 0.3), icon: '🥇' },
-    { label: `Over ${new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(250)}`, count: Math.round(recommendedGifts * 0.1), icon: '💎' },
-  ];
-
-  const totalCashReceived = registryItems.reduce((sum, item) => sum + (item.cash_amount || 0), 0);
-  const thankYouProgress = registryItems.length > 0 
-    ? Math.round((registryItems.filter(i => i.thank_you_sent).length / registryItems.length) * 100) 
-    : 0;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -102,8 +91,37 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
     }).format(value);
   };
 
+  const totalGifts = registryItems.length;
+  
+  const getCurrencyMultiplier = () => {
+    switch(currency.toUpperCase()) {
+      case 'INR':
+      case 'JPY':
+        return 100;
+      default:
+        return 1;
+    }
+  };
+
+  const multiplier = getCurrencyMultiplier();
+  const tier1 = 50 * multiplier;
+  const tier2 = 100 * multiplier;
+  const tier3 = 250 * multiplier;
+
+  const tiers = [
+    { label: `Under ${formatCurrency(tier1)}`, count: registryItems.filter(i => (i.price || 0) < tier1).length, icon: '🥉' },
+    { label: `${formatCurrency(tier1)} - ${formatCurrency(tier2)}`, count: registryItems.filter(i => (i.price || 0) >= tier1 && (i.price || 0) <= tier2).length, icon: '🥈' },
+    { label: `${formatCurrency(tier2)} - ${formatCurrency(tier3)}`, count: registryItems.filter(i => (i.price || 0) > tier2 && (i.price || 0) <= tier3).length, icon: '🥇' },
+    { label: `Over ${formatCurrency(tier3)}`, count: registryItems.filter(i => (i.price || 0) > tier3).length, icon: '💎' },
+  ];
+
+  const totalCashReceived = registryItems.reduce((sum, item) => sum + (item.price || 0), 0);
+  const thankYouProgress = registryItems.length > 0 
+    ? Math.round((registryItems.filter(i => i.is_purchased).length / registryItems.length) * 100) 
+    : 0;
+
   const handleLogGift = async () => {
-    if (!newItem.gifter_name) {
+    if (!newItem.purchased_by) {
       toast.error('Please enter a gifter name');
       return;
     }
@@ -111,9 +129,12 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
     const { data, error } = await supabase
       .from('registry_items')
       .insert([{
-        ...newItem,
-        user_id: userId,
-        thank_you_sent: false
+        purchased_by: newItem.purchased_by,
+        title: newItem.title || (newItem.price > 0 ? '' : 'Gift'),
+        price: newItem.price,
+        created_at: newItem.created_at,
+        is_purchased: false,
+        couple_id: userId
       }])
       .select();
 
@@ -122,54 +143,83 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
     } else {
       toast.success('Gift logged');
       setIsLogDialogOpen(false);
-      setNewItem({ gifter_name: '', gift_description: '', cash_amount: 0, date_received: new Date().toISOString().split('T')[0] });
+      setNewItem({ purchased_by: '', title: '', price: 0, created_at: new Date().toISOString().split('T')[0] });
       refreshData();
     }
+  };
+
+  const handleEditGift = () => {
+    if (!editingItem) return;
+    if (!editingItem.purchased_by) {
+      toast.error('Please enter a gifter name');
+      return;
+    }
+    
+    onUpdateItem(editingItem.id, {
+      purchased_by: editingItem.purchased_by,
+      title: editingItem.title,
+      price: editingItem.price,
+      created_at: editingItem.created_at
+    });
+    
+    toast.success('Gift updated');
+    setEditingItem(null);
+  };
+
+  const handleExport = () => {
+    if (registryItems.length === 0) {
+      toast.error('No gifts to export');
+      return;
+    }
+    
+    const headers = ['Gifter Name,Gift Description,Cash Amount,Date Received,Thank You Sent'];
+    const rows = registryItems.map(item => {
+      const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString() : '';
+      return `"${item.purchased_by || ''}","${item.title || ''}","${item.price || 0}","${dateStr}","${item.is_purchased ? 'Yes' : 'No'}"`;
+    });
+    const csvContent = headers.concat(rows).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "gift-tracker.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Gift list exported successfully!');
   };
 
   return (
     <div className="space-y-8">
       {/* Smart Calculator Widget */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="col-span-1 rounded-3xl border-none bg-primary text-primary-foreground shadow-lg lg:col-span-2">
+        <Card className="col-span-1 rounded-3xl border-none bg-zinc-900 dark:bg-zinc-950 text-white shadow-lg lg:col-span-2 border dark:border-zinc-800">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-<<<<<<< HEAD
               <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-400 uppercase tracking-widest">
-                <Calculator className="h-4 w-4" />
-                Registry Strategy
-              </CardTitle>
-              <Badge variant="outline" className="border-zinc-700 text-zinc-400">
-                Based on {guestCount} Guests
-=======
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-primary-foreground/70 uppercase tracking-widest">
                 <Gift className="h-4 w-4" />
                 Gift Summary
               </CardTitle>
-              <Badge variant="outline" className="border-primary-foreground/20 text-primary-foreground/70">
+              <Badge variant="outline" className="border-zinc-700 text-zinc-400">
                 Total Value: {formatCurrency(totalCashReceived)}
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="mt-4 flex flex-col gap-8 sm:flex-row sm:items-center">
               <div className="flex flex-col">
-<<<<<<< HEAD
-                <span className="text-5xl font-bold tracking-tighter">{recommendedGifts}</span>
-                <span className="text-sm text-zinc-500 uppercase tracking-wider">Recommended Gifts</span>
-=======
                 <span className="text-5xl font-bold tracking-tighter">{totalGifts}</span>
-                <span className="text-sm text-primary-foreground/60 uppercase tracking-wider">Total Gifts Tracked</span>
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+                <span className="text-sm text-zinc-500 uppercase tracking-wider">Total Gifts Tracked</span>
               </div>
-              <div className="h-px w-full bg-primary-foreground/10 sm:h-16 sm:w-px" />
+              <div className="h-px w-full bg-zinc-800 sm:h-16 sm:w-px" />
               <div className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-4">
                 {tiers.map((tier) => (
                   <div key={tier.label} className="flex flex-col items-center text-center">
                     <span className="text-xl">{tier.icon}</span>
                     <span className="mt-1 text-lg font-bold">{tier.count}</span>
-                    <span className="text-[10px] text-primary-foreground/60 uppercase font-bold">{tier.label}</span>
+                    <span className="text-[10px] text-zinc-500 uppercase font-bold">{tier.label}</span>
                   </div>
                 ))}
               </div>
@@ -177,213 +227,181 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border border-border bg-card shadow-sm">
+        <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <CheckCircle2 className="h-4 w-4" />
               Thank Yous
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-foreground">{thankYouProgress}%</span>
-              <span className="text-xs text-muted-foreground">Complete</span>
+              <span className="text-4xl font-bold text-zinc-900 dark:text-white">{thankYouProgress}%</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">Complete</span>
             </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
               <div 
-                className="h-full bg-primary transition-all duration-500" 
+                className="h-full bg-zinc-900 dark:bg-white transition-all duration-500" 
                 style={{ width: `${thankYouProgress}%` }} 
               />
             </div>
-<<<<<<< HEAD
-            <p className="mt-2 text-xs text-zinc-400">
-              {registryItems.filter(i => i.thank_you_sent).length} of {registryItems.length} notes sent
-=======
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
               {registryItems.filter(i => i.is_purchased).length} of {registryItems.length} notes sent
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Gift Tracker Table */}
-      <Card className="rounded-3xl border border-border bg-card shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-6">
+      <Card className="rounded-3xl border-none bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-6">
           <div>
-            <CardTitle className="text-foreground">Gift Tracker</CardTitle>
-            <CardDescription className="text-muted-foreground">Keep track of every gift and thank you note.</CardDescription>
+            <CardTitle className="dark:text-white">Gift Tracker</CardTitle>
+            <CardDescription className="dark:text-zinc-400">Keep track of every gift and thank you note.</CardDescription>
           </div>
-<<<<<<< HEAD
-          
-=======
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl border-input bg-background" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="rounded-xl border-zinc-200 dark:border-zinc-800 dark:text-white" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
             
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
-            <DialogTrigger render={<Button size="sm" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+            <DialogTrigger render={<Button size="sm" className="rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100">
               <Plus className="mr-2 h-4 w-4" />
               Log Gift
             </Button>} />
-            <DialogContent className="rounded-3xl">
+            <DialogContent className="rounded-3xl dark:bg-zinc-900 dark:border-zinc-800">
               <DialogHeader>
-                <DialogTitle className="font-serif italic text-2xl">Log New Gift</DialogTitle>
+                <DialogTitle className="font-serif italic text-2xl dark:text-white">Log New Gift</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Gifter Name</Label>
+                  <Label className="dark:text-zinc-300">Gifter Name</Label>
                   <Input 
                     placeholder="e.g. Aunt Mary" 
-                    value={newItem.gifter_name}
-                    onChange={(e) => setNewItem({ ...newItem, gifter_name: e.target.value })}
-                    className="rounded-xl"
+                    value={newItem.purchased_by}
+                    onChange={(e) => setNewItem({ ...newItem, purchased_by: e.target.value })}
+                    className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Gift Description</Label>
+                  <Label className="dark:text-zinc-300">Gift Description</Label>
                   <Input 
                     placeholder="e.g. KitchenAid Mixer" 
-                    value={newItem.gift_description}
-                    onChange={(e) => setNewItem({ ...newItem, gift_description: e.target.value })}
-                    className="rounded-xl"
+                    value={newItem.title}
+                    onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+                    className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Cash Amount ({currency})</Label>
+                    <Label className="dark:text-zinc-300">Cash Amount ({currency})</Label>
                     <Input 
                       type="number" 
                       placeholder="0"
-                      value={newItem.cash_amount === 0 ? '' : newItem.cash_amount}
-                      onChange={(e) => setNewItem({ ...newItem, cash_amount: Number(e.target.value) })}
-                      className="rounded-xl"
+                      value={newItem.price === 0 ? '' : newItem.price}
+                      onChange={(e) => setNewItem({ ...newItem, price: Number(e.target.value) })}
+                      className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Date Received</Label>
+                    <Label className="dark:text-zinc-300">Date Received</Label>
                     <Input 
                       type="date" 
-                      value={newItem.date_received}
-                      onChange={(e) => setNewItem({ ...newItem, date_received: e.target.value })}
-                      className="rounded-xl"
+                      value={newItem.created_at}
+                      onChange={(e) => setNewItem({ ...newItem, created_at: e.target.value })}
+                      className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     />
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsLogDialogOpen(false)} className="rounded-xl font-medium">Cancel</Button>
-                <Button onClick={handleLogGift} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Log Gift</Button>
+                <Button variant="outline" onClick={() => setIsLogDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                <Button onClick={handleLogGift} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Log Gift</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-<<<<<<< HEAD
-=======
 
           <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-            <DialogContent className="rounded-3xl">
+            <DialogContent className="rounded-3xl dark:bg-zinc-900 dark:border-zinc-800">
               <DialogHeader>
-                <DialogTitle className="font-serif italic text-2xl">Edit Gift</DialogTitle>
+                <DialogTitle className="font-serif italic text-2xl dark:text-white">Edit Gift</DialogTitle>
               </DialogHeader>
               {editingItem && (
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Gifter Name</Label>
+                    <Label className="dark:text-zinc-300">Gifter Name</Label>
                     <Input 
                       value={editingItem.purchased_by}
                       onChange={(e) => setEditingItem({ ...editingItem, purchased_by: e.target.value })}
-                      className="rounded-xl"
+                      className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Gift Description</Label>
+                    <Label className="dark:text-zinc-300">Gift Description</Label>
                     <Input 
                       value={editingItem.title}
                       onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
-                      className="rounded-xl"
+                      className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Cash Amount ({currency})</Label>
+                      <Label className="dark:text-zinc-300">Cash Amount ({currency})</Label>
                       <Input 
                         type="number" 
                         value={editingItem.price === 0 ? '' : editingItem.price}
                         onChange={(e) => setEditingItem({ ...editingItem, price: Number(e.target.value) })}
-                        className="rounded-xl"
+                        className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Date Received</Label>
+                      <Label className="dark:text-zinc-300">Date Received</Label>
                       <Input 
                         type="date" 
                         value={editingItem.created_at}
                         onChange={(e) => setEditingItem({ ...editingItem, created_at: e.target.value })}
-                        className="rounded-xl"
+                        className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                       />
                     </div>
                   </div>
                 </div>
               )}
               <DialogFooter>
-                <Button variant="outline" onClick={() => setEditingItem(null)} className="rounded-xl font-medium">Cancel</Button>
-                <Button onClick={handleEditGift} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Save Changes</Button>
+                <Button variant="outline" onClick={() => setEditingItem(null)} className="rounded-xl">Cancel</Button>
+                <Button onClick={handleEditGift} className="rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">Save Changes</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           </div>
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[200px] font-medium">Gifter Name</TableHead>
-                  <TableHead className="font-medium">Gift Description / Cash</TableHead>
-                  <TableHead className="font-medium">Date Received</TableHead>
-                  <TableHead className="w-[150px] font-medium">Thank You Sent</TableHead>
+                <TableRow className="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
+                  <TableHead className="w-[200px] font-medium text-zinc-500 dark:text-zinc-400">Gifter Name</TableHead>
+                  <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Gift Description</TableHead>
+                  <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Cash Amount</TableHead>
+                  <TableHead className="font-medium text-zinc-500 dark:text-zinc-400">Date Received</TableHead>
+                  <TableHead className="w-[150px] font-medium text-zinc-500 dark:text-zinc-400">Thank You Sent</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {registryItems.length > 0 ? (
                   registryItems.map((item) => (
-<<<<<<< HEAD
-                    <TableRow key={item.id} className="group transition-colors hover:bg-zinc-50">
-                      <TableCell className="font-medium text-zinc-900">{item.gifter_name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {item.cash_amount > 0 ? (
-                            <>
-                              <DollarSign className="h-3 w-3 text-emerald-500" />
-                              <span className="font-semibold text-emerald-600">{formatCurrency(item.cash_amount)}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Gift className="h-3 w-3 text-zinc-400" />
-                              <span className="text-zinc-600">{item.gift_description}</span>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-zinc-400">
-                        {item.date_received ? new Date(item.date_received).toLocaleDateString() : '-'}
-=======
-                    <TableRow key={item.id} className="group transition-colors hover:bg-accent/50">
-                      <TableCell className="font-medium text-foreground">{item.purchased_by}</TableCell>
+                    <TableRow key={item.id} className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800">
+                      <TableCell className="font-medium text-zinc-900 dark:text-white">{item.purchased_by}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {item.title ? (
                             <>
-                              <Gift className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-foreground">{item.title}</span>
+                              <Gift className="h-3 w-3 text-zinc-400" />
+                              <span className="text-zinc-600 dark:text-zinc-400">{item.title}</span>
                             </>
                           ) : (
-                            <span className="text-xs text-muted-foreground italic">None</span>
+                            <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">None</span>
                           )}
                         </div>
                       </TableCell>
@@ -392,54 +410,34 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
                           {item.price > 0 ? (
                             <>
                               <DollarSign className="h-3 w-3 text-emerald-500" />
-                              <span className="font-semibold text-emerald-500">{formatCurrency(item.price)}</span>
+                              <span className="font-semibold text-emerald-600">{formatCurrency(item.price)}</span>
                             </>
                           ) : (
-                            <span className="text-xs text-muted-foreground italic">-</span>
+                            <span className="text-xs text-zinc-400 italic">-</span>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-zinc-400 dark:text-zinc-500">
                         {item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Checkbox 
-<<<<<<< HEAD
-                            checked={item.thank_you_sent} 
-                            onCheckedChange={(checked) => onUpdateItem(item.id, { thank_you_sent: !!checked })}
-                            className="rounded-md border-zinc-300 data-[state=checked]:bg-zinc-900 data-[state=checked]:border-zinc-900"
-                          />
-                          <span className={`text-xs ${item.thank_you_sent ? 'text-zinc-900 font-medium' : 'text-zinc-400'}`}>
-                            {item.thank_you_sent ? 'Complete' : 'Pending'}
-=======
                             checked={item.is_purchased} 
                             onCheckedChange={(checked) => onUpdateItem(item.id, { is_purchased: !!checked })}
-                            className="rounded-md border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            className="rounded-md border-zinc-300 dark:border-zinc-700 data-[state=checked]:bg-zinc-900 dark:data-[state=checked]:bg-white data-[state=checked]:border-zinc-900 dark:data-[state=checked]:border-white"
                           />
-                          <span className={`text-xs ${item.is_purchased ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                          <span className={`text-xs ${item.is_purchased ? 'text-zinc-900 dark:text-white font-medium' : 'text-zinc-400 dark:text-zinc-500'}`}>
                             {item.is_purchased ? 'Complete' : 'Pending'}
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
-<<<<<<< HEAD
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => onDeleteItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-=======
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent"
+                            className="h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             onClick={() => setEditingItem(item)}
                           >
                             <Edit2 className="h-4 w-4" />
@@ -447,23 +445,18 @@ export const RegistryManager: React.FC<RegistryManagerProps> = ({
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                            className="h-8 w-8 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
                             onClick={() => onDeleteItem(item.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-<<<<<<< HEAD
-                    <TableCell colSpan={5} className="h-24 text-center text-sm text-zinc-400 italic">
-=======
-                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground italic">
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+                    <TableCell colSpan={6} className="h-24 text-center text-sm text-zinc-400 italic">
                       No gifts logged yet. Time to start your registry!
                     </TableCell>
                   </TableRow>

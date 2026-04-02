@@ -56,19 +56,19 @@ const SortableModuleItem: React.FC<SortableModuleItemProps> = ({ module, onToggl
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="group flex items-center gap-4 p-4 bg-background border border-border mb-3 hover:border-primary transition-all rounded-xl shadow-sm">
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+    <div ref={setNodeRef} style={style} className="group flex items-center gap-4 p-4 bg-white dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 mb-2 hover:border-black dark:hover:border-white transition-all">
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-stone-400 dark:text-zinc-600 hover:text-black dark:hover:text-white">
         <GripVertical className="h-5 w-5" />
       </div>
       
       <div className="flex-1">
-        <h4 className="text-sm font-bold uppercase tracking-wider text-foreground">{module.title}</h4>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{module.widgets?.length || 0} Widgets Active</p>
+        <h4 className="text-sm font-bold uppercase tracking-wider dark:text-white">{module.title}</h4>
+        <p className="text-[10px] text-stone-500 dark:text-zinc-500 uppercase tracking-widest">{module.widgets?.length || 0} Widgets Active</p>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400 dark:text-zinc-500">
             {module.enabled ? 'Enabled' : 'Disabled'}
           </span>
           <Switch 
@@ -77,11 +77,11 @@ const SortableModuleItem: React.FC<SortableModuleItemProps> = ({ module, onToggl
           />
         </div>
         
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent hover:text-accent-foreground" onClick={() => onEdit(module)}>
+        <Button variant="ghost" size="icon" onClick={() => onEdit(module)} className="dark:text-zinc-400 dark:hover:text-white">
           <Settings className="h-4 w-4" />
         </Button>
         
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(module.id)}>
+        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete(module.id)}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
@@ -91,6 +91,7 @@ const SortableModuleItem: React.FC<SortableModuleItemProps> = ({ module, onToggl
 
 interface UIBuilderProps {
   modules: DashboardModule[];
+  searchQuery?: string;
   modulesDirty: boolean;
   isSavingModules: boolean;
   onDragEnd: (event: any) => void;
@@ -98,11 +99,12 @@ interface UIBuilderProps {
   onDeleteModule: (id: string) => void;
   onSaveAllModules: () => void;
   onSeedModules: () => void;
-  onSaveModule: (module: DashboardModule) => void;
+  onSaveModule: (module: DashboardModule) => Promise<boolean | void>;
 }
 
 export const UIBuilder: React.FC<UIBuilderProps> = ({
   modules,
+  searchQuery = '',
   modulesDirty,
   isSavingModules,
   onDragEnd,
@@ -115,10 +117,19 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
   const [editingModule, setEditingModule] = useState<DashboardModule | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
+  );
+
+  const filteredModules = modules.filter(m => 
+    m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m.label && m.label.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -126,23 +137,23 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-2">
           {modulesDirty && (
-            <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1">
               Unsaved changes
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
           {modules.length === 0 && (
-            <Button variant="outline" className="rounded-xl border-input bg-background hover:bg-accent" onClick={onSeedModules}>
+            <Button variant="outline" className="rounded-none border-stone-200 dark:border-zinc-800 dark:text-zinc-400" onClick={onSeedModules}>
               Seed Initial Modules
             </Button>
           )}
           <Button
             variant="outline"
-            className="rounded-xl border-input bg-background hover:bg-accent"
+            className="rounded-none border-stone-200 dark:border-zinc-800 dark:text-zinc-400"
             onClick={() => {
               const newModule: DashboardModule = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: crypto.randomUUID(),
                 name: 'new_module',
                 label: 'New Module',
                 title: 'New Module',
@@ -156,10 +167,10 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
             <Plus className="mr-2 h-4 w-4" /> Create New Module
           </Button>
           <Button
-            className={`rounded-xl px-6 font-semibold transition-all ${
+            className={`rounded-none px-6 transition-all ${
               modulesDirty
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md'
-                : 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                ? 'bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-zinc-100 text-white dark:text-zinc-900 border border-black dark:border-white shadow-lg'
+                : 'bg-stone-100 dark:bg-zinc-900 text-stone-400 dark:text-zinc-700 border border-transparent cursor-not-allowed'
             }`}
             disabled={!modulesDirty || isSavingModules}
             onClick={onSaveAllModules}
@@ -179,11 +190,11 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
         onDragEnd={onDragEnd}
       >
         <SortableContext 
-          items={modules.map(m => m.id)}
+          items={filteredModules.map(m => m.id)}
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-2">
-            {modules.map((module) => (
+            {filteredModules.map((module) => (
               <SortableModuleItem 
                 key={module.id} 
                 module={module} 
@@ -197,12 +208,12 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
       </DndContext>
 
       <Dialog open={!!editingModule} onOpenChange={(open) => !open && setEditingModule(null)}>
-        <DialogContent className="max-w-2xl rounded-3xl border border-border bg-card">
+        <DialogContent className="max-w-2xl rounded-none dark:bg-zinc-950 dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle className="font-serif italic text-2xl text-foreground">
+            <DialogTitle className="font-serif italic text-2xl dark:text-white">
               {editingModule?.id ? 'Edit Module' : 'Create Module'}
             </DialogTitle>
-            <DialogDescription className="uppercase tracking-widest text-[10px] font-bold text-muted-foreground">
+            <DialogDescription className="uppercase tracking-widest text-[10px] font-bold dark:text-zinc-500">
               Configure widgets and layout for this dashboard section
             </DialogDescription>
           </DialogHeader>
@@ -210,18 +221,18 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
           {editingModule && (
             <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Module Title</Label>
+                <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Module Title</Label>
                 <Input 
                   value={editingModule.title} 
                   onChange={(e) => setEditingModule({ ...editingModule, title: e.target.value })}
-                  className="rounded-xl border-input bg-background text-foreground"
+                  className="rounded-none border-stone-200 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
                 />
               </div>
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <Label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Widgets</Label>
-                  <Button variant="outline" size="sm" className="rounded-xl text-[10px] border-input hover:bg-accent" onClick={() => {
+                  <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">Widgets</Label>
+                  <Button variant="outline" size="sm" className="rounded-none text-[10px] dark:border-zinc-800 dark:text-zinc-400" onClick={() => {
                     const newWidget: DashboardWidget = {
                       id: Math.random().toString(36).substr(2, 9),
                       type: 'metric',
@@ -234,13 +245,13 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
                   </Button>
                 </div>
 
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                   {editingModule.widgets.map((widget, idx) => (
-                    <div key={widget.id} className="p-4 border border-border bg-muted/30 rounded-xl space-y-3">
+                    <div key={widget.id} className="p-4 border border-stone-100 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 space-y-3">
                       <div className="flex justify-between items-start">
                         <div className="flex-1 grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <Label className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">Title</Label>
+                            <Label className="text-[9px] uppercase tracking-widest text-stone-400 dark:text-zinc-600">Title</Label>
                             <Input 
                               value={widget.title}
                               onChange={(e) => {
@@ -248,11 +259,11 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
                                 newWidgets[idx].title = e.target.value;
                                 setEditingModule({ ...editingModule, widgets: newWidgets });
                               }}
-                              className="h-8 text-xs rounded-lg border-input bg-background"
+                             className="h-8 text-xs rounded-none dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">Type</Label>
+                            <Label className="text-[9px] uppercase tracking-widest text-stone-400 dark:text-zinc-600">Type</Label>
                             <select 
                               value={widget.type}
                               onChange={(e) => {
@@ -260,7 +271,7 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
                                 newWidgets[idx].type = e.target.value as any;
                                 setEditingModule({ ...editingModule, widgets: newWidgets });
                               }}
-                              className="w-full h-8 px-2 text-xs border border-input bg-background rounded-lg text-foreground focus:ring-1 focus:ring-primary outline-none"
+                              className="w-full h-8 px-2 text-xs border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white rounded-none"
                             >
                               <option value="metric">Metric</option>
                               <option value="table">Table</option>
@@ -270,7 +281,7 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
                             </select>
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 ml-2 rounded-full hover:bg-destructive/10" onClick={() => {
+                        <Button variant="ghost" size="icon" className="text-red-400 h-8 w-8 ml-2" onClick={() => {
                           const newWidgets = editingModule.widgets.filter((_, i) => i !== idx);
                           setEditingModule({ ...editingModule, widgets: newWidgets });
                         }}>
@@ -280,16 +291,22 @@ export const UIBuilder: React.FC<UIBuilderProps> = ({
                     </div>
                   ))}
                   {editingModule.widgets.length === 0 && (
-                    <div className="text-center py-8 border-2 border-dashed border-border rounded-xl text-muted-foreground uppercase tracking-widest text-[10px] font-bold">
+                    <div className="text-center py-8 border-2 border-dashed border-stone-100 dark:border-zinc-800 text-stone-400 dark:text-zinc-600 uppercase tracking-widest text-[10px] font-bold">
                       No widgets configured
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-6 border-t border-border">
-                <Button variant="outline" className="rounded-xl font-medium border-input hover:bg-accent" onClick={() => setEditingModule(null)}>Cancel</Button>
-                <Button className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-8 font-semibold shadow-md" onClick={() => onSaveModule(editingModule)}>
+              <div className="flex justify-end gap-3 pt-6 border-t border-stone-100 dark:border-zinc-800">
+                <Button variant="outline" className="rounded-none dark:border-zinc-800 dark:text-zinc-400" onClick={() => setEditingModule(null)}>Cancel</Button>
+                <Button 
+                  className="rounded-none bg-black dark:bg-white text-white dark:text-zinc-900 hover:bg-black/90 dark:hover:bg-zinc-100 px-8 border border-black dark:border-white shadow-lg" 
+                  onClick={async () => {
+                    const success = await onSaveModule(editingModule);
+                    if (success !== false) setEditingModule(null);
+                  }}
+                >
                   Save Module Configuration
                 </Button>
               </div>

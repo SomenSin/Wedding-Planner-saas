@@ -85,64 +85,68 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
   }, [isDarkMode]);
 
   const fetchData = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return;
-    setUser(authUser);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      setUser(authUser);
 
-    // Check for wedding details in user metadata
-    const metadata = authUser.user_metadata;
-    if (metadata?.wedding_date) {
-      setWeddingDetails({
-        wedding_date: metadata.wedding_date,
-        couple_name: metadata.couple_name || '',
-        partner_name: metadata.partner_name || ''
-      });
-      setTotalBudget(metadata.total_budget || 0);
-      setCurrency(metadata.currency || 'USD');
-    } else {
-      setIsOnboardingOpen(true);
-    }
+      // Check for wedding details in user metadata
+      const metadata = authUser.user_metadata;
+      if (metadata?.wedding_date) {
+        setWeddingDetails({
+          wedding_date: metadata.wedding_date,
+          couple_name: metadata.couple_name || '',
+          partner_name: metadata.partner_name || ''
+        });
+        setTotalBudget(metadata.total_budget || 0);
+        setCurrency(metadata.currency || 'USD');
+      } else {
+        setIsOnboardingOpen(true);
+      }
 
-    const [
-      mRes, 
-      gRes, 
-      bRes, 
-      rRes, 
-      tRes, 
-      iRes, 
-      vRes, 
-      clRes,
-      acRes,
-      deRes
-    ] = await Promise.all([
-      supabase.from('dashboard_modules').select('*').eq('enabled', true).order('order', { ascending: true }),
-      supabase.from('guests').select('*').eq('couple_id', authUser.id),
-      supabase.from('budget_items').select('*').eq('couple_id', authUser.id),
-      supabase.from('registry_items').select('*').eq('couple_id', authUser.id),
-      supabase.from('logistics_tasks').select('*').eq('couple_id', authUser.id),
-      supabase.from('itinerary_items').select('*').eq('couple_id', authUser.id).order('start_time', { ascending: true }),
-      supabase.from('vendors').select('*').eq('couple_id', authUser.id),
-      supabase.from('checklist_categories').select('*, checklist_items(*)').eq('couple_id', authUser.id),
-      supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle(),
-      supabase.from('drink_entries').select('*').eq('couple_id', authUser.id)
-    ]);
-    
-    if (mRes.data) setModules(mRes.data);
-    if (gRes.data) {
-      setGuests(gRes.data);
-      const totalPeople = gRes.data.reduce((acc: number, g: any) => acc + (g.party_size || 1), 0);
-      setGuestCount(totalPeople);
+      const [
+        mRes, 
+        gRes, 
+        bRes, 
+        rRes, 
+        tRes, 
+        iRes, 
+        vRes, 
+        clRes,
+        acRes,
+        deRes
+      ] = await Promise.all([
+        supabase.from('dashboard_modules').select('*').eq('enabled', true).order('order', { ascending: true }),
+        supabase.from('guests').select('*').eq('couple_id', authUser.id),
+        supabase.from('budget_items').select('*').eq('couple_id', authUser.id),
+        supabase.from('registry_items').select('*').eq('couple_id', authUser.id),
+        supabase.from('logistics_tasks').select('*').eq('couple_id', authUser.id),
+        supabase.from('itinerary_items').select('*').eq('couple_id', authUser.id).order('start_time', { ascending: true }),
+        supabase.from('vendors').select('*').eq('couple_id', authUser.id),
+        supabase.from('checklist_categories').select('*, checklist_items(*)'),
+        supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle(),
+        supabase.from('drink_entries').select('*').eq('couple_id', authUser.id)
+      ]);
+      
+      if (mRes.data) setModules(mRes.data);
+      if (gRes.data) {
+        setGuests(gRes.data);
+        const totalPeople = gRes.data.reduce((acc: number, g: any) => acc + (g.party_size || 1), 0);
+        setGuestCount(totalPeople);
+      }
+      if (bRes.data) setBudgetItems(bRes.data);
+      if (rRes.data) setRegistryItems(rRes.data);
+      if (tRes.data) setTasks(tRes.data);
+      if (iRes.data) setItinerary(iRes.data);
+      if (vRes.data) setVendors(vRes.data);
+      if (deRes.data) setDrinks(deRes.data);
+      if (clRes.data) setChecklistCategories(clRes.data);
+      if (acRes.data) setAccessCode(acRes.data.code);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setIsLoading(false);
     }
-    if (bRes.data) setBudgetItems(bRes.data);
-    if (rRes.data) setRegistryItems(rRes.data);
-    if (tRes.data) setTasks(tRes.data);
-    if (iRes.data) setItinerary(iRes.data);
-    if (vRes.data) setVendors(vRes.data);
-    if (deRes.data) setDrinks(deRes.data);
-    if (clRes.data) setChecklistCategories(clRes.data);
-    if (acRes.data) setAccessCode(acRes.data.code);
-    
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -347,8 +351,8 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <Loader2 className="h-12 w-12 animate-spin text-zinc-300" />
       </div>
     );
   }
@@ -356,7 +360,7 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
   const activeModule = menuItems.find(m => m.id === activeModuleId);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground relative overflow-hidden">
+    <div className="flex min-h-screen bg-zinc-50 relative overflow-hidden">
       {/* Mobile Backdrop Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -370,15 +374,15 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
         )}
       </AnimatePresence>
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-card border-r border-border transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-white border-r border-zinc-100 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
 
         <div className="flex h-full flex-col p-8">
           <div className="mb-12 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg">
                 <Heart className="h-6 w-6" />
               </div>
-              <span className="text-xl font-serif italic text-foreground">Vow Vantage</span>
+              <span className="text-xl font-serif italic text-zinc-900">Vow Vantage</span>
             </div>
             <Button 
               variant="ghost" 
@@ -400,8 +404,8 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
                 }}
                 className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
                   activeModuleId === item.id 
-                    ? 'bg-primary text-primary-foreground shadow-md' 
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'bg-zinc-900 text-white shadow-md' 
+                    : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900'
                 }`}
               >
                 <item.icon className="h-5 w-5" />
@@ -419,8 +423,8 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
                 }}
                 className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
                   activeModuleId === 'admin' 
-                    ? 'bg-primary text-primary-foreground shadow-md' 
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'bg-zinc-900 text-white shadow-md' 
+                    : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900'
                 }`}
               >
                 <Shield className="h-5 w-5" />
@@ -434,8 +438,8 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
               }}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
                 activeModuleId === 'support' 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-zinc-900 text-white shadow-md' 
+                  : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900'
               }`}
             >
               <MessageSquare className="h-5 w-5" />
@@ -443,7 +447,7 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
             </button>
             <Button 
               variant="ghost" 
-              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
               onClick={() => setIsDarkMode(!isDarkMode)}
             >
               {isDarkMode ? (
@@ -460,7 +464,7 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
             </Button>
             <Button 
               variant="ghost" 
-              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-50 hover:text-red-500"
               onClick={() => supabase.auth.signOut()}
             >
               <LogOut className="h-5 w-5" />
@@ -471,13 +475,13 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        <header className="sticky top-0 z-40 flex h-20 items-center justify-between bg-background/80 px-8 backdrop-blur-md lg:hidden">
+        <header className="sticky top-0 z-40 flex h-20 items-center justify-between bg-white/80 px-8 backdrop-blur-md lg:hidden">
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-auto">
             {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
           <div className="flex items-center gap-3 ml-auto">
-            <Heart className="h-6 w-6 text-foreground" />
-            <span className="text-lg font-serif italic text-foreground">Vow Vantage</span>
+            <Heart className="h-6 w-6 text-zinc-900" />
+            <span className="text-lg font-serif italic">Vow Vantage</span>
           </div>
         </header>
 
@@ -492,11 +496,11 @@ export const CoupleDashboard: React.FC<CoupleDashboardProps> = ({ isAdmin, userE
             >
               <div className="mb-12">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground">Couple Dashboard</span>
-                  <div className="h-px w-8 bg-border" />
-                  <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-foreground">{activeModule?.label}</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-400">Couple Dashboard</span>
+                  <div className="h-px w-8 bg-zinc-200" />
+                  <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-900">{activeModule?.label}</span>
                 </div>
-                <h1 className="text-5xl font-serif italic text-foreground">Our Wedding</h1>
+                <h1 className="text-5xl font-serif italic text-zinc-900">Our Wedding</h1>
               </div>
 
               {activeModuleId === 'overview' && (

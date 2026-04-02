@@ -8,7 +8,10 @@ import {
   Plus, 
   Calendar,
   ArrowRight,
-  Edit2
+  Edit2,
+  Gift,
+  Wine,
+  Clock
 } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { motion } from 'motion/react';
@@ -29,10 +32,16 @@ interface DashboardHomeProps {
   coupleName: string;
   partnerName: string;
   guestCount: number;
+  guests: any[];
   rsvpsAccepted: number;
   totalBudget: number;
   spentBudget: number;
   upcomingTasks: any[];
+  itinerary: any[];
+  registryItems: any[];
+  vendors: any[];
+  drinks: any[];
+  checklistCategories: any[];
   onQuickAction: (action: string) => void;
   onUpdateWeddingDetails: (details: any) => void;
   currency: string;
@@ -43,10 +52,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   coupleName,
   partnerName,
   guestCount,
+  guests,
   rsvpsAccepted,
   totalBudget,
   spentBudget,
   upcomingTasks,
+  itinerary,
+  registryItems,
+  vendors,
+  drinks,
+  checklistCategories,
   onQuickAction,
   onUpdateWeddingDetails,
   currency
@@ -58,6 +73,41 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     partner_name: partnerName,
     wedding_date: weddingDate
   });
+
+  // Parse "HH:MM AM/PM" to minutes since midnight for sorting
+  // Parse various time formats like "9 AM", "10:30 PM", "12:00 PM"
+  const parseTimeToMinutes = (timeStr: string): number => {
+    if (!timeStr) return 9999;
+    const match = timeStr.match(/(\d+)(?::(\d+))?\s*(AM|PM)/i);
+    if (!match) return 9999;
+    
+    let hours = parseInt(match[1]);
+    const mins = match[2] ? parseInt(match[2]) : 0;
+    const period = match[3].toUpperCase();
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + mins;
+  };
+
+  // Helper to normalize dates to simplified YYYY-MM-DD for comparison
+  const normalizeDate = (d: any) => {
+    if (!d) return '';
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return String(d).split('T')[0];
+      return dt.toISOString().split('T')[0];
+    } catch {
+      return String(d).split('T')[0];
+    }
+  };
+
+  // Filter and sort itinerary for dashboard display (Wedding Day only)
+  const normWeddingDate = normalizeDate(weddingDate);
+  const weddingDayItems = (itinerary || [])
+    .filter(item => normalizeDate(item?.event_date || item?.date) === normWeddingDate)
+    .sort((a, b) => parseTimeToMinutes(a?.time_text || a?.time) - parseTimeToMinutes(b?.time_text || b?.time))
+    .slice(0, 3);
 
   useEffect(() => {
     setEditDetails({
@@ -102,13 +152,19 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
     }).format(value);
   };
 
+  // Calculate total headcount (sum of party_size) for accurate drink estimations
+  const totalHeadcount = (guests || []).reduce((sum, g) => sum + (g?.party_size || 1), 0);
+
+  // Calculate total drinks from the actual drink calculator entries
+  const totalDrinksFromCalculator = (drinks || []).reduce((sum, d) => sum + (d.estimated || 0), 0);
+
   return (
     <div className="space-y-8">
       {/* Countdown Hero */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-zinc-900 p-12 text-white shadow-2xl"
+        className="relative overflow-hidden rounded-3xl bg-zinc-900 dark:bg-zinc-950 p-12 text-white shadow-2xl"
       >
         <div className="absolute top-6 right-6 z-20">
           <Dialog open={isEditing} onOpenChange={setIsEditing}>
@@ -117,50 +173,50 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 <Edit2 className="h-4 w-4" />
               </Button>
             } />
-            <DialogContent className="rounded-3xl">
+            <DialogContent className="rounded-3xl dark:bg-zinc-900 dark:border-zinc-800">
               <DialogHeader>
-                <DialogTitle className="font-serif italic text-2xl">Edit Wedding Details</DialogTitle>
+                <DialogTitle className="font-serif italic text-2xl dark:text-white">Edit Wedding Details</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Your Name</Label>
+                  <Label className="dark:text-zinc-300">Your Name</Label>
                   <Input 
                     value={editDetails.couple_name}
                     onChange={(e) => setEditDetails({ ...editDetails, couple_name: e.target.value })}
-                    className="rounded-xl"
+                    className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Partner's Name</Label>
+                  <Label className="dark:text-zinc-300">Partner's Name</Label>
                   <Input 
                     value={editDetails.partner_name}
                     onChange={(e) => setEditDetails({ ...editDetails, partner_name: e.target.value })}
-                    className="rounded-xl"
+                    className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Wedding Date</Label>
+                  <Label className="dark:text-zinc-300">Wedding Date</Label>
                   <Input 
                     type="date"
                     value={editDetails.wedding_date}
                     onChange={(e) => setEditDetails({ ...editDetails, wedding_date: e.target.value })}
-                    className="rounded-xl"
+                    className="rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl">Cancel</Button>
+                <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl dark:border-zinc-800 dark:text-white">Cancel</Button>
                 <Button onClick={() => {
                   onUpdateWeddingDetails(editDetails);
                   setIsEditing(false);
-                }} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">Save Changes</Button>
+                }} className="rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100">Save Changes</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
         <div className="relative z-10 flex flex-col items-center justify-center text-center">
-          <span className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-zinc-400">
+          <span className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
             {coupleName} & {partnerName}'s Big Day
           </span>
           <div className="mb-6 flex gap-4 sm:gap-8">
@@ -174,15 +230,15 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 <span className="font-serif text-4xl font-light tracking-tighter sm:text-7xl md:text-8xl">
                   {String(item.value).padStart(2, '0')}
                 </span>
-                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mt-2">
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-bold mt-2">
                   {item.label}
                 </span>
               </div>
             ))}
           </div>
-          <p className="text-xl font-light text-zinc-300 italic">Until We Say "I Do"</p>
+          <p className="text-xl font-light text-zinc-300 dark:text-zinc-400 italic">Until We Say "I Do"</p>
           <div className="mt-8 h-px w-24 bg-zinc-700" />
-          <p className="mt-6 font-mono text-xs tracking-widest text-zinc-500 uppercase">
+          <p className="mt-6 font-mono text-xs tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">
             {weddingDate ? new Date(weddingDate).toLocaleDateString('en-US', { dateStyle: 'full' }) : 'Date not set'}
           </p>
         </div>
@@ -195,196 +251,159 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Button 
           variant="outline" 
-          className="h-24 flex-col gap-2 rounded-2xl border-border bg-card hover:bg-accent hover:text-accent-foreground"
+          className="h-24 flex-col gap-2 rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white"
           onClick={() => onQuickAction('add-guest')}
         >
-          <Plus className="h-6 w-6 text-muted-foreground" />
-          <span className="font-medium text-foreground">Add Guest</span>
+          <Plus className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
+          <span className="font-medium">Add Guest</span>
         </Button>
         <Button 
           variant="outline" 
-          className="h-24 flex-col gap-2 rounded-2xl border-border bg-card hover:bg-accent hover:text-accent-foreground"
+          className="h-24 flex-col gap-2 rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white"
           onClick={() => onQuickAction('log-expense')}
         >
-          <Plus className="h-6 w-6 text-muted-foreground" />
-          <span className="font-medium text-foreground">Log Expense</span>
+          <Plus className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
+          <span className="font-medium">Log Expense</span>
         </Button>
         <Button 
           variant="outline" 
-          className="h-24 flex-col gap-2 rounded-2xl border-border bg-card hover:bg-accent hover:text-accent-foreground"
+          className="h-24 flex-col gap-2 rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white"
           onClick={() => onQuickAction('check-task')}
         >
-          <CheckSquare className="h-6 w-6 text-muted-foreground" />
-          <span className="font-medium text-foreground">Check off Task</span>
+          <CheckSquare className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
+          <span className="font-medium">Check off Task</span>
         </Button>
       </div>
 
-<<<<<<< HEAD
-      {/* Mini-Widgets */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
-=======
       {/* Summary Widgets Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Budget Status */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <DollarSign className="h-4 w-4" />
-              Budget Spent
+              Budget Status
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-<<<<<<< HEAD
-              <span className="text-3xl font-semibold text-zinc-900">{budgetSpentPercent}%</span>
-              <span className="text-xs text-zinc-400">of total budget</span>
+              <span className="text-3xl font-semibold text-zinc-900 dark:text-white">{budgetSpentPercent}%</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">spent of total</span>
             </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800">
               <div 
-                className="h-full bg-zinc-900 transition-all duration-500" 
+                className="h-full bg-zinc-900 dark:bg-white transition-all duration-700" 
                 style={{ width: `${budgetSpentPercent}%` }} 
               />
             </div>
-            <p className="mt-2 text-xs text-zinc-500">{formatCurrency(spentBudget)} spent of {formatCurrency(totalBudget)}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
-=======
-              <span className="text-3xl font-semibold text-foreground">{budgetSpentPercent}%</span>
-              <span className="text-xs text-muted-foreground">spent of total</span>
-            </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div 
-                className="h-full bg-primary transition-all duration-700" 
-                style={{ width: `${budgetSpentPercent}%` }} 
-              />
-            </div>
-            <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+            <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
               Spent: {formatCurrency(spentBudget)}
             </p>
           </CardContent>
         </Card>
 
         {/* Guest RSVPs */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <Users className="h-4 w-4" />
-              RSVPs Accepted
+              RSVPs Received
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-<<<<<<< HEAD
-              <span className="text-3xl font-semibold text-zinc-900">{rsvpsAccepted}</span>
-              <span className="text-xs text-zinc-400">out of {guestCount} guests</span>
+              <span className="text-3xl font-semibold text-zinc-900 dark:text-white">{rsvpsAccepted}</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">accepted of {guestCount}</span>
             </div>
-            <div className="mt-4 flex gap-1">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`h-2 flex-1 rounded-full ${i < (rsvpsAccepted / (guestCount || 1) * 10) ? 'bg-zinc-900' : 'bg-zinc-200'}`} 
-=======
-              <span className="text-3xl font-semibold text-foreground">{rsvpsAccepted}</span>
-              <span className="text-xs text-muted-foreground">accepted of {guestCount}</span>
-            </div>
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800">
               <div 
-                className="h-full bg-primary transition-all duration-700" 
+                className="h-full bg-zinc-900 dark:bg-white transition-all duration-700" 
                 style={{ width: `${guestCount > 0 ? (rsvpsAccepted / guestCount) * 100 : 0}%` }} 
               />
             </div>
-            <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-              Pending: {guestCount - rsvpsAccepted - guests.filter(g => g.rsvp_status === 'declined').length} response(s)
+            <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
+              Pending: {guestCount - rsvpsAccepted - (guests || []).filter(g => g?.rsvp_status === 'declined')?.length || 0} response(s)
             </p>
           </CardContent>
         </Card>
 
         {/* Registry & Gifts */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <Gift className="h-4 w-4" />
               Gift Registry
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-foreground">{registryItems.length}</span>
-              <span className="text-xs text-muted-foreground">items in list</span>
+              <span className="text-3xl font-semibold text-zinc-900 dark:text-white">{(registryItems || []).length}</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">items in list</span>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              <span className="font-bold text-foreground">{registryItems.filter(i => i.is_purchased).length}</span> {registryItems.filter(i => i.is_purchased).length === 1 ? 'gift' : 'gifts'} received so far
+            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="font-bold text-zinc-900 dark:text-white">{(registryItems || []).filter(i => i?.is_purchased).length}</span> gift received so far
             </p>
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-              Cash Received: {formatCurrency(registryItems.reduce((acc, current) => acc + (current.price || 0), 0))} value
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
+              Cash Received: {formatCurrency((registryItems || []).reduce((acc, current) => acc + (current?.price || 0), 0))} value
             </p>
           </CardContent>
         </Card>
 
         {/* Vendors */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <Calendar className="h-4 w-4" />
               Vendors Hired
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-foreground">{vendors.length}</span>
-              <span className="text-xs text-muted-foreground">Total vendors</span>
+              <span className="text-3xl font-semibold text-zinc-900 dark:text-white">{vendors?.length || 0}</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">Total vendors</span>
             </div>
             <div className="mt-4 flex flex-col gap-1">
-              <p className="text-xs text-muted-foreground">
-                <span className="font-bold text-foreground">{vendors.filter(v => v.status === 'hired').length}</span> confirmed hired
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="font-bold text-zinc-900 dark:text-white">{(vendors || []).filter(v => v?.status === 'hired').length}</span> confirmed hired
               </p>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800">
                 <div 
-                  className="h-full bg-primary transition-all" 
-                  style={{ width: `${vendors.length > 0 ? (vendors.filter(v => v.status === 'hired').length / vendors.length) * 100 : 0}%` }} 
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+                  className="h-full bg-zinc-900 dark:bg-white transition-all" 
+                  style={{ width: `${(vendors?.length || 0) > 0 ? (((vendors || []).filter(v => v?.status === 'hired')?.length || 0) / (vendors?.length || 1)) * 100 : 0}%` }} 
                 />
-              ))}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-<<<<<<< HEAD
-        <Card className="rounded-3xl border-none bg-zinc-50 shadow-sm">
-=======
         {/* Drink Calculator Summary */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <Wine className="h-4 w-4" />
               Drink Estimations
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-foreground">
+              <span className="text-3xl font-semibold text-zinc-900 dark:text-white">
                 {totalDrinksFromCalculator > 0 ? totalDrinksFromCalculator : Math.round(totalHeadcount * 4)}
               </span>
-              <span className="text-xs text-muted-foreground">total drinks est.</span>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">total drinks est.</span>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground leading-tight">
+            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400 leading-tight">
               Based on {totalDrinksFromCalculator > 0 ? 'calculator list' : `${totalHeadcount} guests`}
             </p>
-            <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+            <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
               Breakdown: 50% Soft Drinks, 20% Beer, 15% Wine, 10% Spirits, 5% Others
             </p>
           </CardContent>
         </Card>
 
         {/* Itinerary & Tasks */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5">
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <Clock className="h-4 w-4" />
               Wedding Day Itinerary
             </CardTitle>
@@ -396,20 +415,20 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                   {weddingDayItems.map((item, i) => (
                     <div key={`itin-${i}`} className="flex items-start gap-3">
                       <div className="flex flex-col items-center pt-1">
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                        {i !== weddingDayItems.length - 1 && <div className="h-4 w-px bg-border mt-1" />}
+                        <div className="h-1.5 w-1.5 rounded-full bg-zinc-900 dark:bg-white" />
+                        {i !== weddingDayItems.length - 1 && <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mt-1" />}
                       </div>
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="truncate text-xs font-bold text-foreground uppercase tracking-wide leading-none">{item.activity || item.title}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium">{item.time_text} • {item.location || 'Main Venue'}</span>
+                        <span className="truncate text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide leading-none">{item.activity || item.title}</span>
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">{item.time_text} • {item.location || 'Main Venue'}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-4 text-center">
-                  <Clock className="h-8 w-8 text-muted/20 mb-2" />
-                  <p className="text-[10px] text-muted-foreground italic">No wedding day events scheduled</p>
+                  <Clock className="h-8 w-8 text-zinc-100 dark:text-zinc-800 mb-2" />
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-600 italic">No wedding day events scheduled</p>
                 </div>
               )}
             </div>
@@ -417,54 +436,38 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         </Card>
 
         {/* Master Checklist */}
-        <Card className="rounded-3xl border border-border bg-card shadow-sm transition-all hover:bg-accent/5 md:col-span-full lg:col-span-1">
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
+        <Card className="rounded-3xl border-none bg-zinc-50 dark:bg-zinc-900 shadow-sm transition-all hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 md:col-span-full lg:col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               <CheckSquare className="h-4 w-4" />
-              Upcoming Tasks
+              Checklist Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
-<<<<<<< HEAD
-            <div className="space-y-3">
-              {upcomingTasks.length > 0 ? (
-                upcomingTasks.slice(0, 3).map((task, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="truncate text-zinc-700">{task.title}</span>
-                    <span className="text-xs text-zinc-400">{task.due_date ? formatDistanceToNow(new Date(task.due_date), { addSuffix: true }) : 'No date'}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-zinc-400 italic">All caught up!</p>
-              )}
-            </div>
-=======
             {(() => {
-              const allItems = checklistCategories.flatMap(c => c.checklist_items || []);
-              const completed = allItems.filter(i => i.completed).length;
+              const allItems = (checklistCategories || []).flatMap(c => c?.checklist_items || []);
+              const completed = allItems.filter(i => i?.completed).length;
               const total = allItems.length;
               const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
               
               return (
                 <>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-semibold text-foreground">{percent}%</span>
-                    <span className="text-xs text-muted-foreground">overall roadmap</span>
+                    <span className="text-3xl font-semibold text-zinc-900 dark:text-white">{percent}%</span>
+                    <span className="text-xs text-zinc-400">overall roadmap</span>
                   </div>
-                  <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800">
                     <div 
-                      className="h-full bg-primary transition-all duration-1000" 
+                      className="h-full bg-zinc-900 dark:bg-zinc-100 transition-all duration-1000" 
                       style={{ width: `${percent}%` }} 
                     />
                   </div>
-                  <p className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                  <p className="mt-3 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
                     {completed} of {total} items completed
                   </p>
                 </>
               );
             })()}
->>>>>>> cb0cbc8 (feat: complete dark mode refactor and branding refinement for Vow Vantage dashboard and admin interface)
           </CardContent>
         </Card>
       </div>
