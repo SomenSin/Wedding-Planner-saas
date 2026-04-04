@@ -166,6 +166,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
   const [tasks, setTasks] = useState<any[]>([]);
   const [itinerary, setItinerary] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
+  const [drinks, setDrinks] = useState<any[]>([]);
   const [checklistCategories, setChecklistCategories] = useState<any[]>([]);
   const [accessCode, setAccessCode] = useState('000000');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -200,6 +201,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
         tRes, 
         iRes, 
         vRes, 
+        drRes,
         clRes,
         acRes
       ] = await Promise.all([
@@ -210,6 +212,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
         supabase.from('logistics_tasks').select('*'),
         supabase.from('itinerary_items').select('*').order('start_time', { ascending: true }),
         supabase.from('vendors').select('*'),
+        supabase.from('drink_entries').select('*'),
         supabase.from('checklist_categories').select('*, checklist_items(*)'),
         supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle()
       ]);
@@ -224,8 +227,9 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
       if (tRes.data) setTasks(tRes.data);
       if (iRes.data) setItinerary(iRes.data);
       if (vRes.data) setVendors(vRes.data);
+      if (drRes.data) setDrinks(drRes.data);
       if (clRes.data) setChecklistCategories(clRes.data);
-      if (acRes.data) setAccessCode(acRes.data.code);
+      setAccessCode(acRes.data?.code || '000000');
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
@@ -488,7 +492,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
                   itinerary={itinerary}
                   registryItems={registryItems}
                   vendors={vendors}
-                  drinks={[]}
+                  drinks={drinks}
                   checklistCategories={checklistCategories}
                   onQuickAction={(action) => setActiveModuleId(action === 'add-guest' ? 'guests' : action === 'log-expense' ? 'budget' : 'logistics')}
                   onUpdateWeddingDetails={handleUpdateWeddingDetails}

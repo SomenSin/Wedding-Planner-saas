@@ -214,32 +214,31 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
   }, [userId]);
 
   // ─── Live list sync ─────────────────────────────────────────────────────────
+  const latestDrinks = React.useRef(drinks);
+  useEffect(() => {
+    latestDrinks.current = drinks;
+  }, [drinks]);
+
   useEffect(() => {
     if (!isLoaded || !userId) return;
 
     const syncList = async () => {
+      const currentDrinks = latestDrinks.current;
       const desiredTypes = CATALOGUE.filter(cat => cat.formula(currentCalc) > 0);
       
       const toDelete: string[] = [];
       const toUpdate: { id: string; estimated: number }[] = [];
       const toInsert: any[] = [];
 
-      // 1. Check existing drinks
-      const updatedDrinks = drinks.map(d => {
-        // Custom drinks are always preserved
+      // 1. Check existing
+      const updatedDrinks = currentDrinks.map(d => {
         if (d.drink_type === 'custom') return d;
-
         const target = desiredTypes.find(t => t.type === d.drink_type);
         if (!target) {
-          // No longer needed by formula - unless manually touched by user
-          // User request: Delete if 0 quantity
           toDelete.push(d.id);
           return null;
         }
-
-        // If manual, don't overwrite the number, but keep the row
         if (d.is_manual) return d;
-
         const newEst = target.formula(currentCalc);
         if (newEst !== d.estimated) {
           toUpdate.push({ id: d.id, estimated: newEst });
@@ -248,9 +247,9 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
         return d;
       }).filter(Boolean) as DrinkEntry[];
 
-      // 2. Identify missing types
+      // 2. Add missing
       desiredTypes.forEach(cat => {
-        const exists = drinks.find(d => d.drink_type === cat.type);
+        const exists = currentDrinks.find(d => d.drink_type === cat.type);
         if (!exists) {
           toInsert.push({
             couple_id: userId,
@@ -265,10 +264,13 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
         }
       });
 
-      // 3. Execution
+      if (toDelete.length === 0 && toUpdate.length === 0 && toInsert.length === 0) return;
+
+      // Execute deletions
       if (toDelete.length > 0) {
         await supabase.from('drink_entries').delete().in('id', toDelete);
       }
+      // Execute updates
       if (toUpdate.length > 0) {
         await Promise.all(toUpdate.map(({ id, estimated }) => 
           supabase.from('drink_entries').update({ estimated }).eq('id', id)
@@ -286,10 +288,8 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
         }
       }
 
-      if (toDelete.length > 0 || toUpdate.length > 0 || toInsert.length > 0) {
-        setDrinks(finalDrinks);
-        if (refreshData) refreshData();
-      }
+      setDrinks(finalDrinks);
+      if (refreshData) refreshData();
     };
 
     syncList();
