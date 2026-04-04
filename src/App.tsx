@@ -206,14 +206,14 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
         acRes
       ] = await Promise.all([
         supabase.from('dashboard_modules').select('*').eq('enabled', true).order('order', { ascending: true }),
-        supabase.from('guests').select('*'),
-        supabase.from('budget_items').select('*'),
-        supabase.from('registry_items').select('*'),
-        supabase.from('logistics_tasks').select('*'),
-        supabase.from('itinerary_items').select('*').order('start_time', { ascending: true }),
-        supabase.from('vendors').select('*'),
-        supabase.from('drink_entries').select('*'),
-        supabase.from('checklist_categories').select('*, checklist_items(*)'),
+        supabase.from('guests').select('*').eq('couple_id', authUser.id),
+        supabase.from('budget_items').select('*').eq('couple_id', authUser.id),
+        supabase.from('registry_items').select('*').eq('couple_id', authUser.id),
+        supabase.from('logistics_tasks').select('*').eq('couple_id', authUser.id),
+        supabase.from('itinerary_items').select('*').eq('couple_id', authUser.id).order('start_time', { ascending: true }),
+        supabase.from('vendors').select('*').eq('couple_id', authUser.id),
+        supabase.from('drink_entries').select('*').eq('couple_id', authUser.id),
+        supabase.from('checklist_categories').select('*, checklist_items(*)').eq('couple_id', authUser.id),
         supabase.from('access_codes').select('code').eq('linked_user_id', authUser.id).maybeSingle()
       ]);
       
