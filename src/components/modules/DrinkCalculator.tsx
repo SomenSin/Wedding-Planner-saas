@@ -113,6 +113,7 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [showAddCustom, setShowAddCustom] = useState(false);
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
   const [customName, setCustomName] = useState('');
   const [customUnit, setCustomUnit] = useState('Bottles');
   const [customEstimated, setCustomEstimated] = useState<number>(1);
@@ -656,8 +657,9 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
             <div className="col-span-1" />
           </div>
 
+          {/* Filter out 0-quantity rows unless they are custom or being focused */}
           <div className="space-y-2">
-            {drinks.map(drink => {
+            {drinks.filter(d => d.estimated > 0 || d.acquired > 0 || d.id === focusedRowId || d.drink_type === 'custom').map(drink => {
               const isComplete = drink.acquired >= drink.estimated && drink.estimated > 0;
               const pct = drink.estimated > 0 ? Math.min(100, Math.round((drink.acquired / drink.estimated) * 100)) : 0;
               const group = getGroup(drink.drink_type);
@@ -701,23 +703,22 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
                           onClick={() => updateEstimated(drink.id, drink.estimated - 1)}>
                           <Minus className="h-3 w-3" />
                         </button>
-                        <Input type="number" min={0} value={drink.estimated === 0 && !drink.is_manual ? '' : drink.estimated}
+                        <Input type="number" min={0} value={drink.id === focusedRowId && drink.estimated === 0 ? '' : drink.estimated}
                           onChange={e => {
                             const val = e.target.value === '' ? 0 : Number(e.target.value);
-                            if (val === 0 && e.target.value !== '') {
-                              toast.warning('0 quantity not allowed. Minimum is 1 bottle/unit.');
-                              return;
-                            }
                             updateEstimated(drink.id, val);
+                          }}
+                          onFocus={() => setFocusedRowId(drink.id)}
+                          onBlur={() => {
+                            setFocusedRowId(null);
+                            if (drink.estimated === 0) {
+                              toast.info(`${drink.name} hidden because quantity is 0.`);
+                            }
                           }}
                           className="h-7 w-14 text-center text-sm font-bold rounded-lg border-zinc-100 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white" />
                         <button className="h-7 w-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center text-zinc-900 dark:text-white"
                           onClick={() => {
-                            if (drink.estimated === 0) {
-                               updateEstimated(drink.id, 1);
-                            } else {
                                updateEstimated(drink.id, drink.estimated + 1);
-                            }
                           }}>
                           <Plus className="h-3 w-3" />
                         </button>

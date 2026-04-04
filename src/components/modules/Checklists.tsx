@@ -90,30 +90,18 @@ const ProgressRing = ({ progress }: { progress: number }) => {
 };
 
 const DEFAULT_CHECKLISTS = [
-  {
-    title: "12+ Months Before",
-    items: ["Set wedding budget", "Draft guest list", "Research venues"]
-  },
-  {
-    title: "9-11 Months Before",
-    items: ["Hire photographer", "Order wedding dress", "Book hotel blocks"]
-  },
-  {
-    title: "6-8 Months Before",
-    items: ["Book officiant", "Choose caterer", "Create registry"]
-  },
-  {
-    title: "4-5 Months Before",
-    items: ["Order invitations", "Choose groom's attire", "Book transportation"]
-  },
-  {
-    title: "2-3 Months Before",
-    items: ["Mail invitations", "Finalize menu", "Purchase bands"]
-  },
-  {
-    title: "1 Month Before",
-    items: ["Marriage license", "Seating chart", "Final fitting"]
-  }
+  { title: "12 Months Before", items: ["Set wedding budget", "Draft guest list"] },
+  { title: "11 Months Before", items: ["Research venues", "Hire wedding planner"] },
+  { title: "10 Months Before", items: ["Finalize venue", "Choose wedding theme & colors"] },
+  { title: "9 Months Before", items: ["Hire photographer & videographer", "Start dress shopping"] },
+  { title: "8 Months Before", items: ["Order wedding dress", "Send Save the Dates"] },
+  { title: "7 Months Before", items: ["Book hotel blocks", "Choose wedding party"] },
+  { title: "6 Months Before", items: ["Book officiant", "Select caterer & tasting"] },
+  { title: "5 Months Before", items: ["Create gift registry", "Design wedding invitations"] },
+  { title: "4 Months Before", items: ["Order invitations", "Book transportation"] },
+  { title: "3 Months Before", items: ["Mail invitations", "Finalize menu and cake"] },
+  { title: "2 Months Before", items: ["Purchase wedding bands", "Trial hair & makeup"] },
+  { title: "1 Month Before", items: ["Marriage license", "Seating chart", "Final dress fitting"] }
 ];
 
 export const Checklists: React.FC<ChecklistsProps> = ({
