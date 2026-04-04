@@ -78,7 +78,7 @@ const CATALOGUE: {
     
     { type: 'beer',        label: 'Beer',                 unit: 'Cans / Bottles', formula: c => c.beerBottles },
 
-    // Spirits breakdown (10% of total): 750ml bottles. Distribution: Whisky 30%, Vodka 30%, Rum 20%, Gin 10%, Tequila 10%
+    // Spirits breakdown (10% of total): 750ml bottles.
     { type: 'tequila',     label: 'Tequila',              unit: 'Bottles (750ml)', formula: c => Math.round(c.liquorBottles * 0.1) },
     { type: 'gin',         label: 'Gin',                  unit: 'Bottles (750ml)', formula: c => Math.round(c.liquorBottles * 0.1) },
     { type: 'rum',         label: 'Rum',                  unit: 'Bottles (750ml)', formula: c => Math.round(c.liquorBottles * 0.2) },
@@ -88,7 +88,7 @@ const CATALOGUE: {
     // Others (5% of total)
     { type: 'champagne',   label: 'Champagne / Prosecco', unit: 'Bottles', formula: c => c.othersTotal },
 
-    // Non-alcoholic (50% of total): Water 50%, Soft Drinks 30%, Juice 20% (of the 50%)
+    // Non-alcoholic (50% of total): Water 50%, Soft Drinks 30%, Juice 20%
     { type: 'juice',       label: 'Juices',               unit: 'Litres', formula: c => Math.round(c.nonAlcTotal * 0.2) },
     { type: 'soft_drinks', label: 'Soft Drinks / Soda',  unit: 'Litres', formula: c => Math.round(c.nonAlcTotal * 0.3) },
     { type: 'water',       label: 'Water / Mineral',      unit: 'Litres', formula: c => Math.max(0, c.nonAlcTotal - Math.round(c.nonAlcTotal * 0.2) - Math.round(c.nonAlcTotal * 0.3)) },
@@ -121,16 +121,17 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
 
   // ─── Pure formula (used for auto-seeding only) ───────────────────────────────
   const calcFromInputs = useCallback((gc: number, dur: number, ct: string): CalcResult => {
-    // Multipliers: Light (1 drink/hr), Average (2 drinks/hr), Heavy (3.5 drinks/hr)
-    const m = ct === 'light' ? 0.7 : ct === 'heavy' ? 1.5 : 1.0;
+    // Revised Realistic Formula:
+    // Light (0.7 drinks/hr), Average (1.5 drinks/hr), Heavy (2.5 drinks/hr)
+    const m = ct === 'light' ? 0.7 : ct === 'heavy' ? 2.5 : 1.5;
     const total = Math.round(gc * dur * m);
     
     return {
       totalDrinks:   total,
-      wineBottles:   Math.ceil((total * 0.15) / 5),      // 15% Wine
-      beerBottles:   Math.ceil(total * 0.20),            // 20% Beer
-      liquorBottles: Math.ceil((total * 0.10) / 17),     // 10% Spirits
-      othersTotal:   Math.ceil((total * 0.05) / 6),      // 5% Champagne/Others
+      wineBottles:   Math.ceil((total * 0.15) / 5),      // 15% Wine (5 glasses per bottle)
+      beerBottles:   Math.ceil(total * 0.25),            // 25% Beer (1 bottle per drink)
+      liquorBottles: Math.ceil((total * 0.10) / 17),     // 10% Spirits (17 drinks per bottle)
+      othersTotal:   Math.ceil((total * 0.05) / 6),      // 5% Others (e.g. Champagne)
       nonAlcTotal:   Math.ceil(total * 0.50),            // 50% Non-alcoholic
     };
   }, []);
@@ -211,40 +212,88 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
     })();
   }, [userId]);
 
-  // ─── Live recalc: runs whenever calc changes OR drinks first load ───────────
+  // ─── Live list sync: Updates when currentCalc changes ────────────────────────
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !userId) return;
 
-    // Functional setState reads the LIVE drinks array (fixes stale closure)
-    setDrinks(prev => {
-      if (prev.length === 0) return prev;
-      const toUpdate: { id: string; estimated: number }[] = [];
+    (async () => {
+      setDrinks(prev => {
+        const toDelete: string[] = [];
+        const toUpdate: { id: string; estimated: number }[] = [];
+        const toInsert: any[] = [];
 
-      const next = prev.map(d => {
-        if (d.is_manual || d.drink_type === 'custom') return d;
-        const newEst = formulaFor(d.drink_type, currentCalc);
-        if (newEst !== d.estimated) {
-          toUpdate.push({ id: d.id, estimated: newEst });
-          return { ...d, estimated: newEst };
-        }
-        return d;
-      });
+        // Determine which types SHOULD exist based on non-zero formula
+        const desiredTypes = CATALOGUE.filter(cat => cat.formula(currentCalc) > 0);
+        
+        // 1. Mark existing for update or deletion
+        const next = prev.map(d => {
+          if (d.drink_type === 'custom') return d;
+          
+          const target = desiredTypes.find(t => t.type === d.drink_type);
+          if (!target) {
+            // Should not exist (0 quantity) - mark for removal
+            toDelete.push(d.id);
+            return null;
+          }
+          
+          if (d.is_manual) return d;
+          
+          const newEst = target.formula(currentCalc);
+          if (newEst !== d.estimated) {
+            toUpdate.push({ id: d.id, estimated: newEst });
+            return { ...d, estimated: newEst };
+          }
+          return d;
+        }).filter(Boolean) as DrinkEntry[];
 
-      // Persist changes to DB outside the render cycle
-      if (toUpdate.length > 0) {
+        // 2. Add missing types
+        desiredTypes.forEach(cat => {
+          const exists = prev.find(d => d.drink_type === cat.type);
+          if (!exists) {
+            toInsert.push({
+              couple_id: userId,
+              drink_type: cat.type,
+              name: cat.label,
+              unit: cat.unit,
+              estimated: cat.formula(currentCalc),
+              acquired: 0,
+              notes: '',
+              is_manual: false
+            });
+          }
+        });
+
+        // 3. Database operations (background)
         setTimeout(async () => {
-          await Promise.all(
-            toUpdate.map(({ id, estimated }) =>
+          if (toDelete.length > 0) {
+            await supabase.from('drink_entries').delete().in('id', toDelete);
+          }
+          if (toUpdate.length > 0) {
+            await Promise.all(toUpdate.map(({ id, estimated }) => 
               supabase.from('drink_entries').update({ estimated }).eq('id', id)
-            )
-          );
-          if (refreshData) refreshData();
+            ));
+          }
+          if (toInsert.length > 0) {
+            const { data } = await supabase.from('drink_entries').insert(toInsert).select();
+            if (data) {
+              setDrinks(current => [
+                ...current,
+                ...data.map((d: any) => ({
+                  id: d.id, drink_type: d.drink_type, name: d.name, unit: d.unit,
+                  estimated: d.estimated, acquired: 0, notes: '', is_manual: false
+                }))
+              ]);
+            }
+          }
+          if (toDelete.length > 0 || toUpdate.length > 0 || toInsert.length > 0) {
+            if (refreshData) refreshData();
+          }
         }, 0);
-      }
 
-      return next;
-    });
-  }, [currentCalc, isLoaded]);
+        return next;
+      });
+    })();
+  }, [currentCalc, isLoaded, userId]);
 
   // ─── Settings persistence ─────────────────────────────────────────────────────
   const saveSettings = useCallback(async (gc: number, dur: number, ct: string) => {
