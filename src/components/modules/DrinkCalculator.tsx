@@ -230,27 +230,43 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
       const toUpdate: { id: string; estimated: number }[] = [];
       const toInsert: any[] = [];
 
-      // 1. Check existing
-      const updatedDrinks = currentDrinks.map(d => {
-        if (d.drink_type === 'custom') return d;
-        const target = desiredTypes.find(t => t.type === d.drink_type);
-        if (!target) {
-          toDelete.push(d.id);
-          return null;
+      // 1. Canonicalize existing drinks and identify duplicates
+      const seenTypes = new Set<string>();
+      const updatedDrinks: DrinkEntry[] = [];
+
+      currentDrinks.forEach(d => {
+        if (d.drink_type === 'custom') {
+          updatedDrinks.push(d);
+          return;
         }
-        if (d.is_manual) return d;
+
+        const target = desiredTypes.find(t => t.type === d.drink_type);
+        if (!target || seenTypes.has(d.drink_type)) {
+          // If the type is no longer desired, OR we've already seen one of this type (duplicate), mark for deletion
+          toDelete.push(d.id);
+          return;
+        }
+
+        // Canonical row for this type
+        seenTypes.add(d.drink_type);
+        
+        if (d.is_manual) {
+          updatedDrinks.push(d);
+          return;
+        }
+
         const newEst = target.formula(currentCalc);
         if (newEst !== d.estimated) {
           toUpdate.push({ id: d.id, estimated: newEst });
-          return { ...d, estimated: newEst };
+          updatedDrinks.push({ ...d, estimated: newEst });
+        } else {
+          updatedDrinks.push(d);
         }
-        return d;
-      }).filter(Boolean) as DrinkEntry[];
+      });
 
       // 2. Add missing
       desiredTypes.forEach(cat => {
-        const exists = currentDrinks.find(d => d.drink_type === cat.type);
-        if (!exists) {
+        if (!seenTypes.has(cat.type)) {
           toInsert.push({
             couple_id: userId,
             drink_type: cat.type,
