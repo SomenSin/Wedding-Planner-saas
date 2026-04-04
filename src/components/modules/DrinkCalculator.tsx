@@ -212,85 +212,86 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
     })();
   }, [userId]);
 
-  // ─── Live list sync: Updates when currentCalc changes ────────────────────────
+  // ─── Live list sync ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isLoaded || !userId) return;
 
-    (async () => {
-      setDrinks(prev => {
-        const toDelete: string[] = [];
-        const toUpdate: { id: string; estimated: number }[] = [];
-        const toInsert: any[] = [];
+    const syncList = async () => {
+      const desiredTypes = CATALOGUE.filter(cat => cat.formula(currentCalc) > 0);
+      
+      const toDelete: string[] = [];
+      const toUpdate: { id: string; estimated: number }[] = [];
+      const toInsert: any[] = [];
 
-        // Determine which types SHOULD exist based on non-zero formula
-        const desiredTypes = CATALOGUE.filter(cat => cat.formula(currentCalc) > 0);
-        
-        // 1. Mark existing for update or deletion
-        const next = prev.map(d => {
-          if (d.is_manual || d.drink_type === 'custom') return d;
-          
-          const target = desiredTypes.find(t => t.type === d.drink_type);
-          if (!target) {
-            // Should not exist (0 quantity) - mark for removal
-            toDelete.push(d.id);
-            return null;
-          }
-          
-          const newEst = target.formula(currentCalc);
-          if (newEst !== d.estimated) {
-            toUpdate.push({ id: d.id, estimated: newEst });
-            return { ...d, estimated: newEst };
-          }
-          return d;
-        }).filter(Boolean) as DrinkEntry[];
+      // 1. Check existing drinks
+      const updatedDrinks = drinks.map(d => {
+        // Custom drinks are always preserved
+        if (d.drink_type === 'custom') return d;
 
-        // 2. Add missing types
-        desiredTypes.forEach(cat => {
-          const exists = prev.find(d => d.drink_type === cat.type);
-          if (!exists) {
-            toInsert.push({
-              couple_id: userId,
-              drink_type: cat.type,
-              name: cat.label,
-              unit: cat.unit,
-              estimated: cat.formula(currentCalc),
-              acquired: 0,
-              notes: '',
-              is_manual: false
-            });
-          }
-        });
+        const target = desiredTypes.find(t => t.type === d.drink_type);
+        if (!target) {
+          // No longer needed by formula - unless manually touched by user
+          // User request: Delete if 0 quantity
+          toDelete.push(d.id);
+          return null;
+        }
 
-        // 3. Database operations (background)
-        setTimeout(async () => {
-          if (toDelete.length > 0) {
-            await supabase.from('drink_entries').delete().in('id', toDelete);
-          }
-          if (toUpdate.length > 0) {
-            await Promise.all(toUpdate.map(({ id, estimated }) => 
-              supabase.from('drink_entries').update({ estimated }).eq('id', id)
-            ));
-          }
-          if (toInsert.length > 0) {
-            const { data } = await supabase.from('drink_entries').insert(toInsert).select();
-            if (data) {
-              setDrinks(current => [
-                ...current,
-                ...data.map((d: any) => ({
-                  id: d.id, drink_type: d.drink_type, name: d.name, unit: d.unit,
-                  estimated: d.estimated, acquired: 0, notes: '', is_manual: false
-                }))
-              ]);
-            }
-          }
-          if (toDelete.length > 0 || toUpdate.length > 0 || toInsert.length > 0) {
-            if (refreshData) refreshData();
-          }
-        }, 0);
+        // If manual, don't overwrite the number, but keep the row
+        if (d.is_manual) return d;
 
-        return next;
+        const newEst = target.formula(currentCalc);
+        if (newEst !== d.estimated) {
+          toUpdate.push({ id: d.id, estimated: newEst });
+          return { ...d, estimated: newEst };
+        }
+        return d;
+      }).filter(Boolean) as DrinkEntry[];
+
+      // 2. Identify missing types
+      desiredTypes.forEach(cat => {
+        const exists = drinks.find(d => d.drink_type === cat.type);
+        if (!exists) {
+          toInsert.push({
+            couple_id: userId,
+            drink_type: cat.type,
+            name: cat.label,
+            unit: cat.unit,
+            estimated: cat.formula(currentCalc),
+            acquired: 0,
+            notes: '',
+            is_manual: false
+          });
+        }
       });
-    })();
+
+      // 3. Execution
+      if (toDelete.length > 0) {
+        await supabase.from('drink_entries').delete().in('id', toDelete);
+      }
+      if (toUpdate.length > 0) {
+        await Promise.all(toUpdate.map(({ id, estimated }) => 
+          supabase.from('drink_entries').update({ estimated }).eq('id', id)
+        ));
+      }
+      
+      let finalDrinks = updatedDrinks;
+      if (toInsert.length > 0) {
+        const { data } = await supabase.from('drink_entries').insert(toInsert).select();
+        if (data) {
+          finalDrinks = [...updatedDrinks, ...data.map((d: any) => ({
+            id: d.id, drink_type: d.drink_type, name: d.name, unit: d.unit,
+            estimated: d.estimated, acquired: 0, notes: '', is_manual: false
+          }))];
+        }
+      }
+
+      if (toDelete.length > 0 || toUpdate.length > 0 || toInsert.length > 0) {
+        setDrinks(finalDrinks);
+        if (refreshData) refreshData();
+      }
+    };
+
+    syncList();
   }, [currentCalc, isLoaded, userId]);
 
   // ─── Settings persistence ─────────────────────────────────────────────────────
@@ -339,65 +340,36 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
     else toast.error('Failed to delete');
   };
 
-  // ─── Recalculate from inputs (works even if list was cleared) ─────────────────
-  const [isRecalculating, setIsRecalculating] = useState(false);
-
+  const recalculateCountRef = React.useRef(0);
   const recalculate = async () => {
     if (guestCount === 0 || duration === 0) {
       toast.error('Set guest count and duration first');
       return;
     }
     setIsRecalculating(true);
-
-    // Get live drinks state via functional pattern
-    let currentDrinks: DrinkEntry[] = [];
-    setDrinks(prev => { currentDrinks = prev; return prev; });
-
-    // Small delay to let setState flush
-    await new Promise(r => setTimeout(r, 20));
-
-    const nonCustom = currentDrinks.filter(d => d.drink_type !== 'custom');
-
-    if (nonCustom.length === 0) {
-      // List is empty — re-seed the full catalogue
-      const toInsert = CATALOGUE.map(cat => ({
-        couple_id: userId,
-        drink_type: cat.type,
-        name: cat.label,
-        unit: cat.unit,
-        estimated: cat.formula(currentCalc),
-        acquired: 0,
-        notes: '',
-      }));
-      const { data: inserted, error } = await supabase
-        .from('drink_entries').insert(toInsert).select();
-      if (error) { toast.error('Failed: ' + error.message); setIsRecalculating(false); return; }
-      if (inserted) {
-        setDrinks(prev => [
-          ...prev, // keep any custom drinks
-          ...inserted.map((d: any) => ({
-            id: d.id, drink_type: d.drink_type, name: d.name, unit: d.unit,
-            estimated: d.estimated, acquired: 0, notes: '', is_manual: false,
-          })),
-        ]);
-      }
-      toast.success('Drink list recalculated from formula');
+    
+    // Increment the ref to trigger the sync useEffect again if needed
+    // or we can just call our logic manually here.
+    // For simplicity, we'll just clear manual flags if the user is forcing a full recalc
+    const { error } = await supabase
+      .from('drink_entries')
+      .update({ is_manual: false })
+      .eq('couple_id', userId)
+      .neq('drink_type', 'custom');
+    
+    if (error) {
+       toast.error('Recalc failed: ' + error.message);
     } else {
-      // Update existing non-manual entries
-      const updates: { id: string; estimated: number }[] = [];
-      setDrinks(prev => prev.map(d => {
-        if (d.is_manual || d.drink_type === 'custom') return d;
-        const newEst = formulaFor(d.drink_type, currentCalc);
-        updates.push({ id: d.id, estimated: newEst });
-        return { ...d, estimated: newEst };
-      }));
-      await Promise.all(
-        updates.map(({ id, estimated }) =>
-          supabase.from('drink_entries').update({ estimated }).eq('id', id).then(() => {})
-        )
-      );
-      if (refreshData) refreshData();
-      toast.success(`Updated ${updates.length} drink estimates`);
+       // Refresh list to trigger the useEffect sync with new manual=false states
+       const { data } = await supabase.from('drink_entries').select('*').eq('couple_id', userId).order('created_at');
+       if (data) {
+          setDrinks(data.map((d: any) => ({
+            id: d.id, drink_type: d.drink_type || 'custom', name: d.name,
+            unit: d.unit || 'Bottles', estimated: d.estimated ?? 0,
+            acquired: d.acquired ?? 0, notes: d.notes || '', is_manual: d.is_manual ?? false,
+          })));
+          toast.success('List recalculated and synced from formula');
+       }
     }
     setIsRecalculating(false);
   };
