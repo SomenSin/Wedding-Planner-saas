@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   HashRouter as Router,
   Routes,
@@ -351,16 +351,29 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
     }
   };
 
-  const menuItems = [
-    { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'guests', label: 'Guest CRM', icon: Users },
-    { id: 'budget', label: 'Financial Hub', icon: DollarSign },
-    { id: 'registry', label: 'Registry & Gifts', icon: Gift },
-    { id: 'logistics', label: 'Logistics', icon: Truck },
-    { id: 'vendors', label: 'Vendors', icon: Calendar },
-    { id: 'drinks', label: 'Drink Calc', icon: Wine },
-    { id: 'checklists', label: 'Checklists', icon: CheckSquare },
-  ];
+  const menuItems = useMemo(() => {
+    const iconMap: Record<string, any> = {
+      overview: LayoutDashboard,
+      guests: Users,
+      budget: DollarSign,
+      registry: Gift,
+      logistics: Truck,
+      vendors: Calendar,
+      drinks: Wine,
+      checklists: CheckSquare,
+      support: MessageSquare,
+      admin: Shield
+    };
+
+    // Filter and sort modules based on the fetched global config
+    return (modules || [])
+      .filter(m => m.enabled)
+      .map(m => ({
+        id: m.name, // The technical name (e.g., 'overview')
+        label: m.label || m.name, // The display title
+        icon: iconMap[m.name] || LayoutDashboard
+      }));
+  }, [modules]);
 
   if (isLoading) {
     return (
@@ -418,17 +431,6 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
                 Admin Panel
               </button>
             )}
-            <button
-              onClick={() => setActiveModuleId('support')}
-              className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
-                activeModuleId === 'support' 
-                  ? 'bg-zinc-900 text-white shadow-md' 
-                  : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
-              }`}
-            >
-              <MessageSquare className="h-5 w-5" />
-              Support & Feedback
-            </button>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-zinc-400 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white"
