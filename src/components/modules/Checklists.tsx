@@ -125,6 +125,7 @@ export const Checklists: React.FC<ChecklistsProps> = ({
   
   const [isSeeding, setIsSeeding] = useState(false);
   const [hasAttemptedSeed, setHasAttemptedSeed] = useState(false);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   // Auto-seed if empty
   React.useEffect(() => {
@@ -270,20 +271,29 @@ export const Checklists: React.FC<ChecklistsProps> = ({
   };
 
   const handleDeleteCategory = async (id: string) => {
+    // Optimistic UI hiding
+    setHiddenIds(prev => new Set(prev).add(id));
+    
     const { error } = await supabase
       .from('checklist_categories')
       .delete()
       .eq('id', id);
 
     if (error) {
-      toast.error('Failed to delete');
+      toast.error('Failed to delete section');
+      setHiddenIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } else {
-      toast.success('Deleted');
+      toast.success('Section deleted');
       refreshData();
     }
   };
 
   const handleDeleteTask = async (id: string) => {
+    setHiddenIds(prev => new Set(prev).add(id));
     const { error } = await supabase
       .from('checklist_items')
       .delete()
@@ -291,6 +301,11 @@ export const Checklists: React.FC<ChecklistsProps> = ({
 
     if (error) {
       toast.error('Failed to delete task');
+      setHiddenIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } else {
       toast.success('Task deleted');
       refreshData();
@@ -298,7 +313,9 @@ export const Checklists: React.FC<ChecklistsProps> = ({
   };
 
   // Overall progress calculation
-  const allItems = categories.flatMap(cat => cat.items || []);
+  const allItems = categories
+    .filter(cat => !hiddenIds.has(cat.id))
+    .flatMap(cat => (cat.items || []).filter(i => !hiddenIds.has(i.id)));
   const overallCompleted = allItems.filter(i => i.completed).length;
   const overallTotal = allItems.length;
   const overallPercent = overallTotal > 0 ? Math.round((overallCompleted / overallTotal) * 100) : 0;
@@ -434,7 +451,7 @@ export const Checklists: React.FC<ChecklistsProps> = ({
         </Card>
       ) : (
         <Accordion className="space-y-4">
-          {categories.map((category) => {
+          {categories.filter(c => !hiddenIds.has(c.id)).map((category) => {
             const completedCount = category.items.filter(i => i.completed).length;
             const progress = category.items.length > 0 ? (completedCount / category.items.length) * 100 : 0;
 
@@ -490,7 +507,7 @@ export const Checklists: React.FC<ChecklistsProps> = ({
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6 pt-2">
                   <div className="space-y-1">
-                    {category.items.map((item) => (
+                    {category.items.filter(i => !hiddenIds.has(i.id)).map((item) => (
                       <div 
                         key={item.id} 
                         className="group flex items-center justify-between rounded-2xl p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"

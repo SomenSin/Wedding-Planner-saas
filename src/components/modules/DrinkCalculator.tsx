@@ -111,6 +111,7 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
   const [crowdType, setCrowdType] = useState<string>('average');
   const [drinks, setDrinks] = useState<DrinkEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null);

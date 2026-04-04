@@ -594,13 +594,26 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
                     items: cat.checklist_items || []
                   }))}
                   onToggleItem={async (catId, itemId, completed) => {
+                    // 1. Optimistic local update
+                    setChecklistCategories(prev => prev.map(cat => {
+                      if (cat.id !== catId) return cat;
+                      return {
+                        ...cat,
+                        checklist_items: (cat.checklist_items || []).map(item => 
+                          item.id === itemId ? { ...item, completed } : item
+                        )
+                      };
+                    }));
+
+                    // 2. Background sync
                     const { error } = await supabase
                       .from('checklist_items')
                       .update({ completed })
                       .eq('id', itemId);
                     
-                    if (!error) {
-                      fetchData();
+                    if (error) {
+                      toast.error('Sync failed: ' + error.message);
+                      fetchData(); // Rollback to source of truth
                     }
                   }}
                   userId={user?.id || ''}
