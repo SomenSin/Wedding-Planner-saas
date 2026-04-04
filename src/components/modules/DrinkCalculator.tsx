@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { exportToCSV } from '@/lib/export';
+import { FileDown } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DrinkEntry {
@@ -122,16 +124,13 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
     const m = ct === 'light' ? 0.7 : ct === 'heavy' ? 1.5 : 1.0;
     const total = Math.round(gc * dur * m);
     
-    // For very small totals, we avoid many small ceils that add up
-    const safeCeil = (val: number) => (total > 0 && val < 0.1) ? 0 : Math.ceil(val);
-
     return {
       totalDrinks:   total,
-      wineBottles:   safeCeil((total * 0.15) / 5),      // 15% Wine
-      beerBottles:   safeCeil(total * 0.20),            // 20% Beer
-      liquorBottles: safeCeil((total * 0.10) / 17),     // 10% Spirits
-      othersTotal:   safeCeil((total * 0.05) / 6),      // 5% Champagne/Others
-      nonAlcTotal:   safeCeil(total * 0.50),            // 50% Non-alcoholic
+      wineBottles:   Math.ceil((total * 0.15) / 5),      // 15% Wine
+      beerBottles:   Math.ceil(total * 0.20),            // 20% Beer
+      liquorBottles: Math.ceil((total * 0.10) / 17),     // 10% Spirits
+      othersTotal:   Math.ceil((total * 0.05) / 6),      // 5% Champagne/Others
+      nonAlcTotal:   Math.ceil(total * 0.50),            // 50% Non-alcoholic
     };
   }, []);
 
@@ -397,6 +396,19 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
     toast.success(`${data.name} added`);
   };
 
+  const handleExport = () => {
+    const headers = {
+      name: 'Drink Name',
+      drink_type: 'Type',
+      unit: 'Unit',
+      estimated: 'Estimated Quantity',
+      acquired: 'Acquired Quantity',
+      notes: 'Notes/Brand'
+    };
+    exportToCSV(drinks, 'Drink_Calculation_Export', headers);
+    toast.success('Excel-compatible CSV exported');
+  };
+
   // ─── Derived breakdown FROM the drink list (not abstract formula) ─────────────
   const breakdown = useMemo(() => {
     const wine = drinks.filter(d => WINE_TYPES.includes(d.drink_type));
@@ -445,9 +457,19 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Drink Calculator</h2>
-        <p className="mt-1 text-zinc-500 dark:text-zinc-400">Set your inputs — all estimates update automatically. Edit any row manually after.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Drink Calculator</h2>
+          <p className="mt-1 text-zinc-500 dark:text-zinc-400">Set your inputs — all estimates update automatically. Edit any row manually after.</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="rounded-xl border-zinc-200 dark:border-zinc-800 dark:text-white"
+          onClick={handleExport}
+        >
+          <FileDown className="mr-2 h-4 w-4" /> Export to Excel
+        </Button>
       </div>
 
       {/* Summary Stats */}
@@ -634,9 +656,8 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
             <div className="col-span-1" />
           </div>
 
-          {/* Rows — hide drinks where both estimated and acquired are 0 */}
           <div className="space-y-2">
-            {drinks.filter(d => d.estimated > 0 || d.acquired > 0).map(drink => {
+            {drinks.map(drink => {
               const isComplete = drink.acquired >= drink.estimated && drink.estimated > 0;
               const pct = drink.estimated > 0 ? Math.min(100, Math.round((drink.acquired / drink.estimated) * 100)) : 0;
               const group = getGroup(drink.drink_type);
@@ -680,11 +701,24 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
                           onClick={() => updateEstimated(drink.id, drink.estimated - 1)}>
                           <Minus className="h-3 w-3" />
                         </button>
-                        <Input type="number" min={0} value={drink.estimated}
-                          onChange={e => updateEstimated(drink.id, Number(e.target.value))}
+                        <Input type="number" min={0} value={drink.estimated === 0 && !drink.is_manual ? '' : drink.estimated}
+                          onChange={e => {
+                            const val = e.target.value === '' ? 0 : Number(e.target.value);
+                            if (val === 0 && e.target.value !== '') {
+                              toast.warning('0 quantity not allowed. Minimum is 1 bottle/unit.');
+                              return;
+                            }
+                            updateEstimated(drink.id, val);
+                          }}
                           className="h-7 w-14 text-center text-sm font-bold rounded-lg border-zinc-100 dark:border-zinc-700 bg-white dark:bg-zinc-800 dark:text-white" />
                         <button className="h-7 w-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center text-zinc-900 dark:text-white"
-                          onClick={() => updateEstimated(drink.id, drink.estimated + 1)}>
+                          onClick={() => {
+                            if (drink.estimated === 0) {
+                               updateEstimated(drink.id, 1);
+                            } else {
+                               updateEstimated(drink.id, drink.estimated + 1);
+                            }
+                          }}>
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>

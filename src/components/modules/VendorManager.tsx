@@ -40,6 +40,8 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { exportToCSV } from '@/lib/export';
+import { FileDown } from 'lucide-react';
 
 interface Vendor {
   id: string;
@@ -171,6 +173,28 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
     setEditingVendor(null);
   };
 
+  const handleExport = () => {
+    const headers = {
+      name: 'Vendor Name',
+      category: 'Category',
+      email: 'Email',
+      phone: 'Phone',
+      website: 'Website',
+      total_cost: `Total Cost (${currency})`,
+      deposit_paid: `Deposit Paid (${currency})`,
+      balance_due: `Balance Due (${currency})`,
+      booked: 'Status (Booked)'
+    };
+    
+    const exportData = vendors.map(v => ({
+      ...v,
+      booked: v.booked ? 'Yes' : 'No'
+    }));
+
+    exportToCSV(exportData, 'Vendor_List_Export', headers);
+    toast.success('Excel-compatible CSV exported');
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -179,11 +203,21 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Keep track of your dream team.</p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger render={<Button size="sm" className="rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Vendor
-          </Button>} />
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="rounded-xl border-zinc-200 dark:border-zinc-800 dark:text-white"
+            onClick={handleExport}
+          >
+            <FileDown className="mr-2 h-4 w-4" /> Export
+          </Button>
+          
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger render={<Button size="sm" className="rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Vendor
+            </Button>} />
           <DialogContent className="rounded-3xl max-w-md dark:bg-zinc-900 dark:border-zinc-800">
             <DialogHeader>
               <DialogTitle className="font-serif italic text-2xl dark:text-white">Add New Vendor</DialogTitle>
@@ -273,8 +307,9 @@ export const VendorManager: React.FC<VendorManagerProps> = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
 
-        <Dialog open={!!editingVendor} onOpenChange={(open) => !open && setEditingVendor(null)}>
+      <Dialog open={!!editingVendor} onOpenChange={(open) => !open && setEditingVendor(null)}>
           <DialogContent className="rounded-3xl max-w-md dark:bg-zinc-900 dark:border-zinc-800">
             <DialogHeader>
               <DialogTitle className="font-serif italic text-2xl dark:text-white">Edit Vendor</DialogTitle>
