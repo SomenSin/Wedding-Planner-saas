@@ -121,9 +121,9 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
 
   // ─── Pure formula (used for auto-seeding only) ───────────────────────────────
   const calcFromInputs = useCallback((gc: number, dur: number, ct: string): CalcResult => {
-    // Revised Realistic Formula:
-    // Light (0.7 drinks/hr), Average (1.5 drinks/hr), Heavy (2.5 drinks/hr)
-    const m = ct === 'light' ? 0.7 : ct === 'heavy' ? 2.5 : 1.5;
+    // Realistic multipliers for wedding settings: 
+    // Light: 0.5 drinks/hr, Average: 1.0 drinks/hr, Heavy: 1.5 drinks/hr
+    const m = ct === 'light' ? 0.5 : ct === 'heavy' ? 1.5 : 1.0;
     const total = Math.round(gc * dur * m);
     
     return {
@@ -227,7 +227,7 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
         
         // 1. Mark existing for update or deletion
         const next = prev.map(d => {
-          if (d.drink_type === 'custom') return d;
+          if (d.is_manual || d.drink_type === 'custom') return d;
           
           const target = desiredTypes.find(t => t.type === d.drink_type);
           if (!target) {
@@ -235,8 +235,6 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
             toDelete.push(d.id);
             return null;
           }
-          
-          if (d.is_manual) return d;
           
           const newEst = target.formula(currentCalc);
           if (newEst !== d.estimated) {
@@ -306,7 +304,9 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
   // ─── CRUD ────────────────────────────────────────────────────────────────────
   const updateEstimated = async (id: string, value: number) => {
     const v = Math.max(0, value);
+    // Important: mark as manual so the automatic sync doesn't overwrite it
     setDrinks(prev => prev.map(d => d.id === id ? { ...d, estimated: v, is_manual: true } : d));
+    
     await supabase.from('drink_entries').update({ estimated: v, is_manual: true }).eq('id', id);
     if (refreshData) refreshData();
   };
@@ -674,8 +674,9 @@ export const DrinkCalculator: React.FC<DrinkCalculatorProps> = ({
                 </div>
                 <div>
                   <Label className="text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Estimated (required) *</Label>
-                  <Input type="number" min={1} placeholder="e.g. 10" value={customEstimated === 0 ? '' : customEstimated}
-                    onChange={e => setCustomEstimated(Math.max(1, Number(e.target.value)))}
+                  <Input type="number" min={1} placeholder="e.g. 10" 
+                    value={customEstimated || ''}
+                    onChange={e => setCustomEstimated(e.target.value === '' ? 0 : Number(e.target.value))}
                     className="rounded-xl mt-1 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
                 </div>
                 <div>
