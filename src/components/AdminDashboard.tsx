@@ -230,6 +230,36 @@ export const AdminDashboard: React.FC<{ refreshData?: () => void }> = ({ refresh
     }
   };
 
+  const deleteFeedback = async (id: string, imageUrl?: string | null) => {
+    try {
+      // 1. Delete image from storage if it exists
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        const { error: storageError } = await supabase.storage
+          .from('feedback-images')
+          .remove([imageUrl]);
+        
+        if (storageError) {
+          console.error('Failed to delete image from storage:', storageError);
+          // We continue anyway to at least remove the DB record
+        }
+      }
+
+      // 2. Delete from database
+      const { error: dbError } = await supabase
+        .from('user_feedback')
+        .delete()
+        .eq('id', id);
+
+      if (dbError) throw dbError;
+
+      // 3. Update local state
+      setFeedback(prev => prev.filter(f => f.id !== id));
+    } catch (err: any) {
+      console.error('Delete feedback error:', err);
+      throw new Error(err.message || 'Failed to delete feedback record');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -352,6 +382,7 @@ export const AdminDashboard: React.FC<{ refreshData?: () => void }> = ({ refresh
             <FeedbackInbox 
               feedback={feedback}
               updateFeedbackStatus={updateFeedbackStatus}
+              deleteFeedback={deleteFeedback}
             />
           )}
         </motion.div>

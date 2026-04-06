@@ -19,46 +19,101 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Filter, MoreVertical, Eye, ImageIcon, X, ExternalLink } from 'lucide-react';
+import { Filter, MoreVertical, Eye, ImageIcon, X, ExternalLink, Trash2, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Feedback } from '@/types/admin';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface FeedbackInboxProps {
   feedback: Feedback[];
   updateFeedbackStatus: (id: string, status: string) => void;
+  deleteFeedback: (id: string, imageUrl?: string | null) => Promise<void>;
 }
 
 export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({ 
   feedback, 
-  updateFeedbackStatus 
+  updateFeedbackStatus,
+  deleteFeedback
 }) => {
   const [selectedItem, setSelectedItem] = useState<Feedback | null>(null);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | 'all'>('all');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    if (selectedItem?.image_url) {
-      if (selectedItem.image_url.startsWith('http')) {
-        setResolvedImageUrl(selectedItem.image_url);
+    const resolveImage = async () => {
+      if (selectedItem?.image_url) {
+        if (selectedItem.image_url.startsWith('http')) {
+          setResolvedImageUrl(selectedItem.image_url);
+        } else {
+          try {
+            // Use signed URL for better reliable loading even if bucket is private
+            const { data, error } = await supabase.storage
+              .from('feedback-images')
+              .createSignedUrl(selectedItem.image_url, 3600); // 1hr
+            
+            if (error) {
+              console.warn('Could not create signed URL, trying public URL fallback:', error);
+              const { data: publicData } = supabase.storage.from('feedback-images').getPublicUrl(selectedItem.image_url);
+              setResolvedImageUrl(publicData.publicUrl);
+            } else {
+              setResolvedImageUrl(data.signedUrl);
+            }
+          } catch (err) {
+            console.error('Resolved image error:', err);
+            setResolvedImageUrl(null);
+          }
+        }
       } else {
-        const { data } = supabase.storage.from('feedback-images').getPublicUrl(selectedItem.image_url);
-        setResolvedImageUrl(data.publicUrl);
+        setResolvedImageUrl(null);
       }
-    } else {
-      setResolvedImageUrl(null);
-    }
+    };
+
+    resolveImage();
   }, [selectedItem]);
+
+  const filteredFeedback = feedback.filter(item => 
+    statusFilter === 'all' ? true : item.status === statusFilter
+  );
+
+  const handleDelete = async (item: Feedback) => {
+    if (!window.confirm('Are you sure you want to delete this feedback? This action cannot be undone.')) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteFeedback(item.id, item.image_url);
+      if (selectedItem?.id === item.id) setSelectedItem(null);
+      toast.success('Feedback deleted successfully');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete feedback');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <Card className="rounded-none border-stone-200 dark:border-zinc-800 shadow-sm overflow-hidden dark:bg-zinc-900 transition-colors">
         <div className="p-4 bg-stone-50 dark:bg-zinc-800/50 border-b border-stone-200 dark:border-zinc-800 flex justify-between items-center">
-          <h3 className="text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">All Submissions ({feedback.length})</h3>
-          <Button variant="ghost" size="sm" className="text-[10px] uppercase tracking-widest font-bold dark:text-zinc-400 dark:hover:text-white">
-            <Filter className="h-3 w-3 mr-2" /> Filter
-          </Button>
+          <div className="flex items-center gap-4">
+            <h3 className="text-[10px] uppercase tracking-widest font-bold text-stone-500 dark:text-zinc-400">All Submissions ({filteredFeedback.length})</h3>
+            <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 px-2 py-1 border border-stone-200 dark:border-zinc-700">
+               <span className="text-[9px] uppercase tracking-widest font-bold text-stone-400">Filter:</span>
+               <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent border-none text-[9px] uppercase tracking-widest font-bold focus:ring-0 cursor-pointer dark:text-zinc-300 outline-none"
+               >
+                 <option value="all">All</option>
+                 <option value="new">New</option>
+                 <option value="in-progress">In-Progress</option>
+                 <option value="resolved">Resolved</option>
+               </select>
+            </div>
+          </div>
         </div>
         <div className="divide-y divide-stone-100 dark:divide-zinc-800">
-          {feedback.map((item) => (
+          {filteredFeedback.map((item) => (
             <div key={item.id} className="p-6 hover:bg-stone-50/50 dark:hover:bg-zinc-800/50 transition-colors flex gap-6">
               <div className="flex-1 space-y-3">
                 <div className="flex items-center gap-3">
@@ -80,9 +135,9 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                   )}
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 min-w-[120px]">
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="rounded-none text-[9px] uppercase tracking-widest font-bold dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800" />}>
+                  <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="rounded-none text-[9px] uppercase tracking-widest font-bold dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 w-full" />}>
                     Status <MoreVertical className="h-3 w-3 ml-2" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rounded-none dark:bg-zinc-900 dark:border-zinc-800">
@@ -91,20 +146,31 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                     <DropdownMenuItem onClick={() => updateFeedbackStatus(item.id, 'resolved')}>Resolved</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="rounded-none text-[9px] uppercase tracking-widest font-bold dark:text-zinc-400 dark:hover:text-white"
-                  onClick={() => setSelectedItem(item)}
-                >
-                  <Eye className="h-3 w-3 mr-2" /> View Details
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex-1 rounded-none text-[9px] uppercase tracking-widest font-bold dark:text-zinc-400 dark:hover:text-white border border-stone-100 dark:border-zinc-800"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    <Eye className="h-3 w-3 mr-2" /> View
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="rounded-none text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 px-2"
+                    onClick={() => handleDelete(item)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
-          {feedback.length === 0 && (
+          {filteredFeedback.length === 0 && (
             <div className="p-12 text-center text-stone-400 dark:text-zinc-600 uppercase tracking-widest text-[10px] font-bold">
-              No feedback submissions found
+              No feedback submissions match your filter
             </div>
           )}
         </div>
@@ -127,23 +193,36 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                 </p>
               </div>
 
-              {resolvedImageUrl && (
+              {selectedItem.image_url && (
                 <div className="space-y-3">
                   <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Attached Image</Label>
-                  <div className="relative group">
-                    <img 
-                      src={resolvedImageUrl} 
-                      alt="Feedback attachment" 
-                      className="w-full max-h-[400px] object-contain border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
-                    />
-                    <a 
-                      href={resolvedImageUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <ExternalLink className="h-3 w-3" /> Open Full Image
-                    </a>
+                  <div className="relative group min-h-[100px] border border-stone-200 dark:border-zinc-800 bg-stone-100/50 dark:bg-zinc-900/50 flex items-center justify-center">
+                    {resolvedImageUrl ? (
+                      <>
+                        <img 
+                          src={resolvedImageUrl} 
+                          alt="Feedback attachment" 
+                          className="w-full max-h-[400px] object-contain bg-white dark:bg-zinc-900"
+                          onError={() => {
+                            console.error('Failed to load image:', resolvedImageUrl);
+                            setResolvedImageUrl(null);
+                          }}
+                        />
+                        <a 
+                          href={resolvedImageUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <ExternalLink className="h-3 w-3" /> Open Full Image
+                        </a>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-stone-400 py-12">
+                        <AlertCircle className="h-6 w-6" />
+                        <span className="text-[9px] uppercase tracking-widest font-bold">Image failed to load or is syncing...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
