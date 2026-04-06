@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Badge 
 } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Filter, MoreVertical, Eye, ImageIcon, X, ExternalLink } from 'lucide-react';
 import { Feedback } from '@/types/admin';
+import { supabase } from '@/lib/supabase';
 
 interface FeedbackInboxProps {
   feedback: Feedback[];
@@ -32,6 +33,20 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
   updateFeedbackStatus 
 }) => {
   const [selectedItem, setSelectedItem] = useState<Feedback | null>(null);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedItem?.image_url) {
+      if (selectedItem.image_url.startsWith('http')) {
+        setResolvedImageUrl(selectedItem.image_url);
+      } else {
+        const { data } = supabase.storage.from('feedback-images').getPublicUrl(selectedItem.image_url);
+        setResolvedImageUrl(data.publicUrl);
+      }
+    } else {
+      setResolvedImageUrl(null);
+    }
+  }, [selectedItem]);
 
   return (
     <div className="space-y-6">
@@ -112,17 +127,17 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                 </p>
               </div>
 
-              {selectedItem.image_url && (
+              {resolvedImageUrl && (
                 <div className="space-y-3">
                   <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Attached Image</Label>
                   <div className="relative group">
                     <img 
-                      src={selectedItem.image_url} 
+                      src={resolvedImageUrl} 
                       alt="Feedback attachment" 
                       className="w-full max-h-[400px] object-contain border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
                     />
                     <a 
-                      href={selectedItem.image_url} 
+                      href={resolvedImageUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
