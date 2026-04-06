@@ -36,48 +36,50 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
   deleteFeedback
 }) => {
   const [selectedItem, setSelectedItem] = useState<Feedback | null>(null);
-  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+  const [resolvedImageUrls, setResolvedImageUrls] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string | 'all'>('all');
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const resolveImage = async () => {
+    const resolveImages = async () => {
       if (selectedItem?.image_url) {
-        console.log('Resolving feedback image for item:', selectedItem.id, 'Original URL/Path:', selectedItem.image_url);
+        console.log('Resolving feedback images for item:', selectedItem.id, 'Original payload:', selectedItem.image_url);
         
-        if (selectedItem.image_url.startsWith('http')) {
-          console.log('URL is already full, using directly');
-          setResolvedImageUrl(selectedItem.image_url);
-        } else {
-          try {
-            // First try public URL (most efficient for public buckets)
-            const { data: publicData } = supabase.storage.from('feedback-images').getPublicUrl(selectedItem.image_url);
-            console.log('Public URL generated:', publicData.publicUrl);
-            
-            // If the public bucket is actually private, we still need a signed URL
-            // Let's create a signed one to be absolutely sure
-            const { data, error } = await supabase.storage
-              .from('feedback-images')
-              .createSignedUrl(selectedItem.image_url, 3600); // 1hr
-            
-            if (error) {
-              console.warn('Could not create signed URL, falling back to public:', error);
-              setResolvedImageUrl(publicData.publicUrl);
-            } else {
-              console.log('Signed URL generated successfully');
-              setResolvedImageUrl(data.signedUrl);
+        // Handle comma-separated list of images
+        const paths = selectedItem.image_url.split(',').filter(Boolean);
+        const resolved: string[] = [];
+
+        for (const path of paths) {
+          if (path.startsWith('http')) {
+            resolved.push(path);
+          } else {
+            try {
+              // Try creating signed URL (most robust)
+              const { data, error } = await supabase.storage
+                .from('feedback-images')
+                .createSignedUrl(path, 3600);
+              
+              if (!error && data?.signedUrl) {
+                resolved.push(data.signedUrl);
+              } else {
+                // Fallback to public URL
+                const { data: publicData } = supabase.storage.from('feedback-images').getPublicUrl(path);
+                if (publicData?.publicUrl) resolved.push(publicData.publicUrl);
+              }
+            } catch (err) {
+              console.error('Error resolving image path:', path, err);
             }
-          } catch (err) {
-            console.error('CRITICAL: Resolve image error:', err);
-            setResolvedImageUrl(null);
           }
         }
+        
+        console.log('Final resolved image list:', resolved);
+        setResolvedImageUrls(resolved);
       } else {
-        setResolvedImageUrl(null);
+        setResolvedImageUrls([]);
       }
     };
 
-    resolveImage();
+    resolveImages();
   }, [selectedItem]);
 
   const filteredFeedback = feedback.filter(item => 
@@ -138,7 +140,7 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                   <span>By: {item.users?.email || 'Unknown'}</span>
                   {item.image_url && (
                     <span className="flex items-center gap-1 text-black dark:text-zinc-300">
-                      <ImageIcon className="h-3 w-3" /> Attachment Included
+                      <ImageIcon className="h-3 w-3" /> {item.image_url.split(',').length} Attachment(s)
                     </span>
                   )}
                 </div>
@@ -185,7 +187,7 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
       </Card>
 
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="max-w-2xl rounded-none dark:bg-zinc-950 dark:border-zinc-800">
+        <DialogContent className="max-w-2xl rounded-none dark:bg-zinc-950 dark:border-zinc-800 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-serif italic text-2xl dark:text-white">Feedback Details</DialogTitle>
             <DialogDescription className="uppercase tracking-widest text-[10px] font-bold dark:text-zinc-500">
@@ -203,32 +205,32 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
 
               {selectedItem.image_url && (
                 <div className="space-y-3">
-                  <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Attached Image</Label>
-                  <div className="relative group min-h-[100px] border border-stone-200 dark:border-zinc-800 bg-stone-100/50 dark:bg-zinc-900/50 flex items-center justify-center">
-                    {resolvedImageUrl ? (
-                      <>
-                        <img 
-                          src={resolvedImageUrl} 
-                          alt="Feedback attachment" 
-                          className="w-full max-h-[400px] object-contain bg-white dark:bg-zinc-900"
-                          onError={() => {
-                            console.error('Failed to load image:', resolvedImageUrl);
-                            setResolvedImageUrl(null);
-                          }}
-                        />
-                        <a 
-                          href={resolvedImageUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <ExternalLink className="h-3 w-3" /> Open Full Image
-                        </a>
-                      </>
+                  <Label className="text-[10px] uppercase tracking-widest font-bold text-stone-400">
+                    Attachments ({selectedItem.image_url.split(',').length})
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {resolvedImageUrls.length > 0 ? (
+                      resolvedImageUrls.map((url, idx) => (
+                        <div key={idx} className="relative group border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 min-h-[150px] flex items-center justify-center">
+                          <img 
+                            src={url} 
+                            alt={`Attachment ${idx + 1}`} 
+                            className="w-full max-h-[300px] object-contain"
+                          />
+                          <a 
+                            href={url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/80 text-white p-2 text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <ExternalLink className="h-3 w-3" /> Open
+                          </a>
+                        </div>
+                      ))
                     ) : (
-                      <div className="flex flex-col items-center gap-2 text-stone-400 py-12">
+                      <div className="col-span-full flex flex-col items-center gap-2 text-stone-400 py-12 bg-stone-50 dark:bg-zinc-900/50">
                         <AlertCircle className="h-6 w-6" />
-                        <span className="text-[9px] uppercase tracking-widest font-bold">Image failed to load or is syncing...</span>
+                        <span className="text-[9px] uppercase tracking-widest font-bold">Images are resolving...</span>
                       </div>
                     )}
                   </div>
@@ -262,3 +264,4 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
     </div>
   );
 };
+
