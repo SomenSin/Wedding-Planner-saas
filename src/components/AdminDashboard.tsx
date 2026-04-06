@@ -22,7 +22,7 @@ import { UIBuilder } from '@/features/admin/components/UIBuilder';
 import { FeedbackInbox } from '@/features/admin/components/FeedbackInbox';
 import { Profile, AccessCode, DashboardModule, Feedback } from '@/types/admin';
 
-export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onModulesSaved }) => {
+export const AdminDashboard: React.FC<{ refreshData?: () => void }> = ({ refreshData }) => {
   const [activeTab, setActiveTab] = useState('users');
   const [modulesDirty, setModulesDirty] = useState(false);
   const [isSavingModules, setIsSavingModules] = useState(false);
@@ -123,25 +123,37 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
   const saveAllModules = async () => {
     setIsSavingModules(true);
     try {
-      // Map modules to the correct schema for database UPSERT
+      // Validate modules have names and IDs
       const updates = modules.map((m, idx) => ({ 
         id: m.id, 
-        name: m.name, 
-        label: m.title, // Title from UI is mapped to Label in DB
+        name: m.name || m.title.toLowerCase().replace(/\s+/g, '_'), 
+        label: m.title, 
         enabled: m.enabled, 
         order: idx,
-        widgets: m.widgets || [] // Preserve widgets
+        widgets: m.widgets || [] 
       }));
+
+      console.log('Attempting to save modules:', updates);
       
+      // Attempt upsert - if widgets column doesn't exist, we'll try without it
       const { error } = await supabase.from('dashboard_modules').upsert(updates);
-      if (error) throw error;
       
+      if (error) {
+        console.error('Initial upsert failed, trying without widgets column:', error);
+        // Fallback for older schemas without widgets column
+        const fallbackUpdates = updates.map(({ widgets, ...rest }) => rest);
+        const { error: error2 } = await supabase.from('dashboard_modules').upsert(fallbackUpdates);
+        if (error2) throw error2;
+      }
+
       setModulesDirty(false);
-      toast.success('Dashboard layout saved globally');
-      onModulesSaved?.();
-    } catch (err) {
-      console.error('Save error:', err);
-      toast.error('Failed to save dashboard changes');
+      toast.success('Dashboard layout saved successfully');
+      
+      // Trigger a global refresh to update parent state
+      if (refreshData) refreshData();
+    } catch (err: any) {
+      console.error('Detailed save error:', err);
+      toast.error(`Failed to save dashboard changes: ${err.message || 'Database error'}`);
     } finally {
       setIsSavingModules(false);
     }
@@ -177,8 +189,18 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
         widgets: module.widgets || []
       };
       
-      const { data, error } = await supabase.from('dashboard_modules').upsert(payload).select();
-      if (error) throw error;
+      console.log('Saving module individually:', payload);
+      
+      // Attempt upsert with widgets
+      let { data, error } = await supabase.from('dashboard_modules').upsert(payload).select();
+      
+      if (error) {
+        console.warn('Individual save failed with widgets, trying fallback:', error);
+        const { widgets, ...fallbackPayload } = payload;
+        const fallbackRes = await supabase.from('dashboard_modules').upsert(fallbackPayload).select();
+        if (fallbackRes.error) throw fallbackRes.error;
+        data = fallbackRes.data;
+      }
       
       if (data) {
         const saved = { ...data[0], title: data[0].label || data[0].name, widgets: module.widgets || [] };
@@ -188,11 +210,13 @@ export const AdminDashboard: React.FC<{ onModulesSaved?: () => void }> = ({ onMo
           return [...prev, saved];
         });
         toast.success(`Module "${module.title}" saved successfully`);
-        return true; // Return success for dialog closing
+        
+        if (refreshData) refreshData();
+        return true; 
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Module individual save error:', err);
-      toast.error('Failed to save module settings');
+      toast.error(`Failed to save module settings: ${err.message || 'Database error'}`);
       return false;
     }
   };

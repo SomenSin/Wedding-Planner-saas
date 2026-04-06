@@ -230,6 +230,15 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
       if (drRes.data) setDrinks(drRes.data);
       if (clRes.data) setChecklistCategories(clRes.data);
       setAccessCode(acRes.data?.code || '000000');
+
+      // Auto-switch to first available module if current one is disabled
+      if (mRes.data) {
+        const enabledModules = mRes.data.filter((m: any) => m.enabled);
+        const currentStillEnabled = enabledModules.find((m: any) => m.name === activeModuleId);
+        if (!currentStillEnabled && enabledModules.length > 0 && activeModuleId !== 'admin' && activeModuleId !== 'support') {
+          setActiveModuleId(enabledModules[0].name);
+        }
+      }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
@@ -431,6 +440,17 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
                 Admin Panel
               </button>
             )}
+            <button
+              onClick={() => setActiveModuleId('support')}
+              className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+                activeModuleId === 'support' 
+                  ? 'bg-zinc-900 text-white shadow-md' 
+                  : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              <MessageSquare className="h-5 w-5" />
+              Support & Feedback
+            </button>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-zinc-400 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white"
@@ -636,7 +656,7 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
 
               {activeModuleId === 'admin' && isAdmin && (
                 <div className="p-8">
-                  <AdminDashboard />
+                  <AdminDashboard refreshData={fetchData} />
                 </div>
               )}
             </motion.div>
