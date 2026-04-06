@@ -43,24 +43,32 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
   useEffect(() => {
     const resolveImage = async () => {
       if (selectedItem?.image_url) {
+        console.log('Resolving feedback image for item:', selectedItem.id, 'Original URL/Path:', selectedItem.image_url);
+        
         if (selectedItem.image_url.startsWith('http')) {
+          console.log('URL is already full, using directly');
           setResolvedImageUrl(selectedItem.image_url);
         } else {
           try {
-            // Use signed URL for better reliable loading even if bucket is private
+            // First try public URL (most efficient for public buckets)
+            const { data: publicData } = supabase.storage.from('feedback-images').getPublicUrl(selectedItem.image_url);
+            console.log('Public URL generated:', publicData.publicUrl);
+            
+            // If the public bucket is actually private, we still need a signed URL
+            // Let's create a signed one to be absolutely sure
             const { data, error } = await supabase.storage
               .from('feedback-images')
               .createSignedUrl(selectedItem.image_url, 3600); // 1hr
             
             if (error) {
-              console.warn('Could not create signed URL, trying public URL fallback:', error);
-              const { data: publicData } = supabase.storage.from('feedback-images').getPublicUrl(selectedItem.image_url);
+              console.warn('Could not create signed URL, falling back to public:', error);
               setResolvedImageUrl(publicData.publicUrl);
             } else {
+              console.log('Signed URL generated successfully');
               setResolvedImageUrl(data.signedUrl);
             }
           } catch (err) {
-            console.error('Resolved image error:', err);
+            console.error('CRITICAL: Resolve image error:', err);
             setResolvedImageUrl(null);
           }
         }

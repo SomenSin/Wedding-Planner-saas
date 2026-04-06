@@ -34,25 +34,45 @@ export const FeedbackFAB: React.FC = () => {
 
       if (file) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        const fileName = `${Math.random()}-${Date.now()}.${fileExt}`;
+        
+        console.log('Attempting to upload feedback image:', fileName);
         const { data, error: uploadError } = await supabase.storage
           .from('feedback-images')
           .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
-        imageUrl = data.path;
+        if (uploadError) {
+          console.error('Upload error details:', uploadError);
+          throw uploadError;
+        }
+        
+        console.log('Upload successful, data:', data);
+        
+        // Get the full public URL immediately
+        const { data: publicRes } = supabase.storage
+          .from('feedback-images')
+          .getPublicUrl(data.path);
+          
+        imageUrl = publicRes.publicUrl;
+        console.log('Resolved public URL to be saved:', imageUrl);
       }
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase.from('user_feedback').insert({
+      const insertPayload = {
         content,
         image_url: imageUrl,
         user_id: user?.id,
         type: 'feature',
-      });
+      };
+      
+      console.log('Inserting feedback payload:', insertPayload);
+      const { error } = await supabase.from('user_feedback').insert(insertPayload);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database insert error:', error);
+        throw error;
+      }
 
       toast.success('Feedback submitted successfully!');
       setContent('');
