@@ -364,12 +364,12 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             </div>
             <div className="mt-4 flex flex-col gap-1">
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                <span className="font-bold text-zinc-900 dark:text-white">{(vendors || []).filter(v => v?.status === 'hired').length}</span> confirmed hired
+                <span className="font-bold text-zinc-900 dark:text-white">{(vendors || []).filter(v => v?.booked).length}</span> confirmed hired
               </p>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800">
                 <div 
                   className="h-full bg-zinc-900 dark:bg-white transition-all" 
-                  style={{ width: `${(vendors?.length || 0) > 0 ? (((vendors || []).filter(v => v?.status === 'hired')?.length || 0) / (vendors?.length || 1)) * 100 : 0}%` }} 
+                  style={{ width: `${(vendors?.length || 0) > 0 ? (((vendors || []).filter(v => v?.booked)?.length || 0) / (vendors?.length || 1)) * 100 : 0}%` }} 
                 />
               </div>
             </div>
