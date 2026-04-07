@@ -807,8 +807,32 @@ export default function App() {
 
     if (!checkConfig()) return;
 
+    const checkUserStatus = async (currentSession: any) => {
+      if (!currentSession?.user?.id) return;
+      const { data, error } = await supabase
+        .from('users')
+        .select('is_blocked')
+        .eq('id', currentSession.user.id)
+        .single();
+        
+      if (error && error.code === 'PGRST116') {
+        // User row deleted from public.users! We should log them out.
+        await supabase.auth.signOut();
+        setSession(null);
+        toast.error('Your account has been restricted or removed by an administrator.');
+      } else if (data?.is_blocked) {
+        // User is blocked
+        await supabase.auth.signOut();
+        setSession(null);
+        toast.error('Your access to the platform has been temporarily suspended.');
+      } else {
+        setSession(currentSession);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      setSession(session);
+      if (session) checkUserStatus(session);
+      else setSession(null);
       
       // Handle Supabase Hash / query errors (like expired links due to email scanners)
       const hash = window.location.hash;
@@ -836,7 +860,11 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      if (session && _event !== 'INITIAL_SESSION') {
+         checkUserStatus(session);
+      } else if (!session) {
+         setSession(null);
+      }
     });
 
     return () => subscription.unsubscribe();
