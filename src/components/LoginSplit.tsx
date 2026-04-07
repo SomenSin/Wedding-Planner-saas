@@ -126,7 +126,7 @@ export const LoginSplit: React.FC = () => {
         <div className="relative z-10 flex items-center gap-8 text-[10px] uppercase tracking-[0.2em] text-white/40">
           <span>© 2026 Vow Vantage</span>
           <Link to="/privacy" className="hover:text-white transition-colors cursor-pointer underline underline-offset-4 decoration-white/20">Privacy Policy</Link>
-          <span>Terms of Service</span>
+          <Link to="/terms" className="hover:text-white transition-colors cursor-pointer underline underline-offset-4 decoration-white/20">Terms of Service</Link>
         </div>
       </div>
 
@@ -255,7 +255,7 @@ export const LoginSplit: React.FC = () => {
             </p>
             <div className="flex justify-center gap-4 text-[10px] uppercase tracking-widest font-bold text-stone-400 dark:text-zinc-600">
               <Link to="/privacy" className="hover:text-black dark:hover:text-white transition-colors underline underline-offset-4 decoration-stone-200 dark:decoration-zinc-800">Privacy Policy</Link>
-              <span>Terms of Service</span>
+              <Link to="/terms" className="hover:text-black dark:hover:text-white transition-colors underline underline-offset-4 decoration-stone-200 dark:decoration-zinc-800">Terms of Service</Link>
             </div>
           </div>
         </div>

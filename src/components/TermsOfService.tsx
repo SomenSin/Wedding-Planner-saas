@@ -1,9 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, ArrowLeft, ShieldCheck, Cookie, Lock, UserCheck } from 'lucide-react';
+import { Heart, ArrowLeft, FileText, Globe, Gavel, UserCheck } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
-export const PrivacyPolicy: React.FC = () => {
+export const TermsOfService: React.FC = () => {
   const navigate = useNavigate();
 
   return (
@@ -30,9 +30,9 @@ export const PrivacyPolicy: React.FC = () => {
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto text-center space-y-4">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl mb-4">
-            <ShieldCheck className="h-6 w-6" />
+            <FileText className="h-6 w-6" />
           </div>
-          <h1 className="text-5xl font-serif italic text-zinc-900 dark:text-white">Privacy Policy</h1>
+          <h1 className="text-5xl font-serif italic text-zinc-900 dark:text-white">Terms of Service</h1>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-stone-400 dark:text-zinc-500">Last Updated: April 7th, 2026</p>
         </div>
       </section>
@@ -44,18 +44,33 @@ export const PrivacyPolicy: React.FC = () => {
           <section className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="h-8 w-8 rounded-xl bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-stone-600 dark:text-zinc-300">
+                <Globe className="h-4 w-4" />
+              </div>
+              <h2 className="text-2xl font-serif italic text-zinc-900 dark:text-white">Agreement to Terms</h2>
+            </div>
+            <div className="prose prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-zinc-400 leading-relaxed space-y-4">
+              <p>
+                By accessing or using Vow Vantage, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service. These terms apply to all visitors, users, and others who access or use the Service.
+              </p>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="h-8 w-8 rounded-xl bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-stone-600 dark:text-zinc-300">
                 <UserCheck className="h-4 w-4" />
               </div>
-              <h2 className="text-2xl font-serif italic text-zinc-900 dark:text-white">Information We Collect</h2>
+              <h2 className="text-2xl font-serif italic text-zinc-900 dark:text-white">User Accounts</h2>
             </div>
             <div className="prose prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-zinc-400 leading-relaxed space-y-4">
               <p>
-                At Vow Vantage, we collect information to help you plan your perfect wedding. This includes:
+                To access certain features of Vow Vantage, you must register for an account. You agree to:
               </p>
-              <ul className="list-disc pl-6 space-y-2">
-                <li><strong>Account Data:</strong> Email address, name, and wedding details (date, partner name) provided during registration.</li>
-                <li><strong>Dashboard Data:</strong> Guest lists, budget details, vendor contracts, and logistics information you input into your private dashboard.</li>
-                <li><strong>Usage Data:</strong> Information about how you interact with our platform to improve our features.</li>
+              <ul className="list-disc pl-6 space-y-4">
+                <li><strong>Security:</strong> Maintain the security of your password and identification.</li>
+                <li><strong>Accuracy:</strong> Provide and maintain accurate, current, and complete information.</li>
+                <li><strong>Responsibility:</strong> Accept all risks of unauthorized access to all information you provide to the Service.</li>
+                <li><strong>Privacy:</strong> Understand that your account is private. Sharing account access is strictly prohibited.</li>
               </ul>
             </div>
           </section>
@@ -63,55 +78,41 @@ export const PrivacyPolicy: React.FC = () => {
           <section className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="h-8 w-8 rounded-xl bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-stone-600 dark:text-zinc-300">
-                <Cookie className="h-4 w-4" />
+                <Gavel className="h-4 w-4" />
               </div>
-              <h2 className="text-2xl font-serif italic text-zinc-900 dark:text-white">Cookie Policy</h2>
+              <h2 className="text-2xl font-serif italic text-zinc-900 dark:text-white">Acceptable Use</h2>
             </div>
             <div className="prose prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-zinc-400 leading-relaxed space-y-4">
               <p>
-                We use cookies and similar tracking technologies to enhance your experience:
+                Vow Vantage is designed for wedding planning. You agree not to use the Service for any purpose that is prohibited by these Terms or by law. Prohibited conduct includes:
               </p>
               <ul className="list-disc pl-6 space-y-2">
-                <li><strong>Essential Cookies:</strong> Used for authentication and security (e.g., maintaining your login session).</li>
-                <li><strong>Preference Cookies:</strong> Used to remember your choices (e.g., Dark Mode settings).</li>
-                <li><strong>Analytics Cookies:</strong> Used to understand general usage patterns.</li>
+                <li>Using the Service for any illegal or unauthorized purpose.</li>
+                <li>Attempting to hack, destabilize, or adapt the Service and its code.</li>
+                <li>Uploading malicious code or viruses.</li>
+                <li>Compiling data from our service for any commercial purpose without our express written consent.</li>
               </ul>
-              <p className="mt-4">
-                You can manage your cookie preferences through the interactive banner that appears on your first visit or through your browser settings.
-              </p>
             </div>
           </section>
 
-          <section className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="h-8 w-8 rounded-xl bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-stone-600 dark:text-zinc-300">
-                <Lock className="h-4 w-4" />
-              </div>
-              <h2 className="text-2xl font-serif italic text-zinc-900 dark:text-white">Data Security</h2>
-            </div>
-            <div className="prose prose-stone dark:prose-invert max-w-none text-stone-600 dark:text-zinc-400 leading-relaxed space-y-4">
-              <p>
-                Your wedding data is deeply personal. We implement robust security measures to protect it:
-              </p>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>All data is stored securely using Supabase (PostgreSQL) with industry-standard encryption.</li>
-                <li>We use Row-Level Security (RLS) to ensure only you can access your dashboard data.</li>
-                <li>We never sell your personal information to third-party vendors.</li>
-              </ul>
+          <section className="space-y-6 text-center pt-8 border-t border-stone-200 dark:border-zinc-800">
+            <p className="text-sm text-stone-500 dark:text-zinc-400 mb-8 italic">
+              "Planning a wedding is a journey. We're here to make it elegant and effortless."
+            </p>
+            <div className="flex justify-center gap-6 text-[10px] uppercase tracking-widest font-bold">
+              <Link to="/privacy" className="text-zinc-900 dark:text-white hover:underline transition-all">Privacy Policy</Link>
+              <span className="text-stone-300 dark:text-zinc-700">|</span>
+              <Link to="/login" className="text-stone-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all">Back to Sign In</Link>
             </div>
           </section>
 
         </div>
 
-        <div className="mt-24 pt-12 border-t border-stone-200 dark:border-zinc-800 text-center space-y-6">
+        {/* Footer Link */}
+        <div className="mt-24 pt-12 border-t border-stone-200 dark:border-zinc-800 text-center">
           <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 dark:text-zinc-500">
-            Have questions? Contact us at <span className="text-black dark:text-white underline cursor-pointer">support@vowvantage.com</span>
+            © 2026 Vow Vantage. All Rights Reserved.
           </p>
-          <div className="flex justify-center gap-6 text-[10px] uppercase tracking-widest font-bold">
-            <Link to="/terms" className="text-stone-400 dark:text-zinc-600 hover:text-black dark:hover:text-white transition-all underline underline-offset-4 decoration-stone-200 dark:decoration-zinc-800">Terms of Service</Link>
-            <span className="text-stone-200 dark:text-zinc-800">|</span>
-            <Link to="/login" className="text-stone-400 dark:text-zinc-600 hover:text-black dark:hover:text-white transition-all underline underline-offset-4 decoration-stone-200 dark:decoration-zinc-800">Back to Sign In</Link>
-          </div>
         </div>
       </main>
     </div>

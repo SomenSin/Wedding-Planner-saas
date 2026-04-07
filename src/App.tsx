@@ -29,6 +29,7 @@ import { DrinkCalculator } from '@/components/modules/DrinkCalculator';
 import { Checklists } from '@/components/modules/Checklists';
 import { SupportModule } from '@/components/modules/SupportModule';
 import { PrivacyPolicy } from '@/components/PrivacyPolicy';
+import { TermsOfService } from '@/components/TermsOfService';
 import { CookieConsent } from '@/components/CookieConsent';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, AnimatePresence } from 'motion/react';
@@ -853,6 +854,7 @@ export default function App() {
         <Route path="/guest/portal" element={<GuestPortal />} />
         <Route path="/guest/dashboard" element={<GuestDashboard />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route 
           path="/login" 
           element={
