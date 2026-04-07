@@ -65,6 +65,9 @@ export const AdminDashboard: React.FC<{ refreshData?: () => void }> = ({ refresh
     if (!error) {
       setProfiles(profiles.map(p => p.id === userId ? { ...p, is_blocked: !isBlocked } : p));
       toast.success(`User ${!isBlocked ? 'blocked' : 'unblocked'}`);
+    } else {
+      console.error(error);
+      toast.error('Failed to toggle user status: ' + error.message);
     }
   };
 
@@ -73,6 +76,9 @@ export const AdminDashboard: React.FC<{ refreshData?: () => void }> = ({ refresh
     if (!error) {
       setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole as any } : p));
       toast.success('Role updated');
+    } else {
+      console.error(error);
+      toast.error('Failed to change role: ' + error.message);
     }
   };
 
@@ -81,6 +87,9 @@ export const AdminDashboard: React.FC<{ refreshData?: () => void }> = ({ refresh
     if (!error) {
       setProfiles(profiles.filter(p => p.id !== userId));
       toast.success('User deleted');
+    } else {
+      console.error(error);
+      toast.error('Failed to delete user: ' + error.message);
     }
   };
 
