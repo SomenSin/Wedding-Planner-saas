@@ -807,8 +807,30 @@ export default function App() {
 
     if (!checkConfig()) return;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       setSession(session);
+      
+      // Handle Supabase Hash / query errors (like expired links due to email scanners)
+      const hash = window.location.hash;
+      if (hash && hash.includes('error_description=')) {
+        try {
+          // Parse the hash parameters (often looks like #error=...&error_description=...)
+          const hashRoute = hash.split('?')[0]; // Sometimes hashrouter prefixes
+          const paramString = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
+          const params = new URLSearchParams(paramString);
+          const errorDesc = params.get('error_description')?.replace(/\+/g, ' ');
+          
+          if (errorDesc?.toLowerCase().includes('expired') || errorDesc?.toLowerCase().includes('invalid')) {
+            toast.info('Verification link already used or expired. If you just registered, your email provider might have pre-verified it. Try signing in!', {
+              duration: 8000
+            });
+          } else if (errorDesc) {
+            toast.error(errorDesc);
+          }
+          // Clean up the hash to prevent HashRouter from crashing/looping
+          window.history.replaceState(null, '', window.location.pathname);
+        } catch (e) {}
+      }
     });
 
     const {
