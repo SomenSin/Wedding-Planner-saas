@@ -29,3 +29,10 @@ CREATE POLICY "Admins can delete users"
   FOR DELETE
   TO authenticated
   USING (public.is_admin());
+
+-- Create policy for VIEWING all users (for the Admin Panel list)
+CREATE POLICY "Admins can view all users"
+  ON public.users
+  FOR SELECT
+  TO authenticated
+  USING (public.is_admin());
