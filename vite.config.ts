@@ -6,7 +6,8 @@ import { defineConfig, loadEnv } from 'vite';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/Vow_Vantage/',
+    // Use '/' for Vercel deployments, otherwise use '/Vow_Vantage/' for GitHub Pages
+    base: process.env.VERCEL ? '/' : '/Vow_Vantage/',
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
