@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Heart, ArrowRight, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -124,7 +125,7 @@ export const LoginSplit: React.FC = () => {
         
         <div className="relative z-10 flex items-center gap-8 text-[10px] uppercase tracking-[0.2em] text-white/40">
           <span>© 2026 Vow Vantage</span>
-          <span>Privacy Policy</span>
+          <Link to="/privacy" className="hover:text-white transition-colors cursor-pointer underline underline-offset-4 decoration-white/20">Privacy Policy</Link>
           <span>Terms of Service</span>
         </div>
       </div>
@@ -227,7 +228,7 @@ export const LoginSplit: React.FC = () => {
           </form>
 
           <div className="mt-8 pt-8 border-t border-stone-200 dark:border-zinc-800 text-center">
-            <p className="text-sm text-muted-foreground dark:text-zinc-500">
+            <p className="text-sm text-muted-foreground dark:text-zinc-500 mb-6">
               {isLogin ? (
                 <>
                   Don't have an account?{' '}
@@ -252,6 +253,10 @@ export const LoginSplit: React.FC = () => {
                 </>
               )}
             </p>
+            <div className="flex justify-center gap-4 text-[10px] uppercase tracking-widest font-bold text-stone-400 dark:text-zinc-600">
+              <Link to="/privacy" className="hover:text-black dark:hover:text-white transition-colors underline underline-offset-4 decoration-stone-200 dark:decoration-zinc-800">Privacy Policy</Link>
+              <span>Terms of Service</span>
+            </div>
           </div>
         </div>
       </div>

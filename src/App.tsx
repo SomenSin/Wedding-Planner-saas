@@ -28,6 +28,8 @@ import { VendorManager } from '@/components/modules/VendorManager';
 import { DrinkCalculator } from '@/components/modules/DrinkCalculator';
 import { Checklists } from '@/components/modules/Checklists';
 import { SupportModule } from '@/components/modules/SupportModule';
+import { PrivacyPolicy } from '@/components/PrivacyPolicy';
+import { CookieConsent } from '@/components/CookieConsent';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -850,6 +852,7 @@ export default function App() {
         />
         <Route path="/guest/portal" element={<GuestPortal />} />
         <Route path="/guest/dashboard" element={<GuestDashboard />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route 
           path="/login" 
           element={
@@ -883,6 +886,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <CookieConsent />
       <Toaster position="top-right" richColors />
     </Router>
   );
