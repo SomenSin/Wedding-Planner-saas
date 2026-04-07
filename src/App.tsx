@@ -859,7 +859,18 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (_event === 'PASSWORD_RECOVERY') {
+        const newPassword = prompt('Welcome back! Please enter a new password for your account:');
+        if (newPassword) {
+           const { error } = await supabase.auth.updateUser({ password: newPassword });
+           if (error) toast.error('Failed to update password: ' + error.message);
+           else toast.success('Password updated successfully!');
+        } else {
+           toast.error('Password reset cancelled. You may need to request another link later.');
+        }
+      }
+
       if (session && _event !== 'INITIAL_SESSION') {
          checkUserStatus(session);
       } else if (!session) {

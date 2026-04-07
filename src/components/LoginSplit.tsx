@@ -180,7 +180,33 @@ export const LoginSplit: React.FC = () => {
                   Password
                 </Label>
                 {isLogin && (
-                  <a href="#" className="text-[10px] uppercase tracking-widest font-bold dark:text-zinc-400 hover:underline">Forgot?</a>
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      if (!email) {
+                        toast.error('Please enter your email address first to reset your password.');
+                        return;
+                      }
+                      setIsLoading(true);
+                      try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                          redirectTo: window.location.origin + window.location.pathname,
+                        });
+                        if (error) throw error;
+                        toast.success('Password reset instructions sent!', {
+                          description: 'Please check your email inbox.',
+                          duration: 6000,
+                        });
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to send reset instructions.');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    className="text-[10px] uppercase tracking-widest font-bold dark:text-zinc-400 hover:underline"
+                  >
+                    Forgot?
+                  </button>
                 )}
               </div>
               <Input 
