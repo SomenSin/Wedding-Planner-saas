@@ -231,11 +231,30 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                       <div className="col-span-full flex flex-col items-center gap-2 text-stone-400 py-12 bg-stone-50 dark:bg-zinc-900/50">
                         <AlertCircle className="h-6 w-6" />
                         <span className="text-[9px] uppercase tracking-widest font-bold">Images are resolving...</span>
+                        <div className="text-[8px] font-mono text-zinc-500 bg-zinc-100 p-2 border border-zinc-200 mt-2 max-w-full overflow-hidden truncate">
+                          Raw Path: {selectedItem.image_url}
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               )}
+
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <details className="cursor-pointer group">
+                  <summary className="text-[8px] uppercase tracking-widest font-bold text-stone-300 group-hover:text-stone-500 transition-colors">
+                    System Debug Information
+                  </summary>
+                  <div className="mt-2 p-3 bg-zinc-50 dark:bg-zinc-900/50 font-mono text-[9px] text-zinc-500 border border-zinc-200 dark:border-zinc-800 overflow-x-auto">
+                    <pre>{JSON.stringify({ 
+                      id: selectedItem.id, 
+                      image_url: selectedItem.image_url, 
+                      status: selectedItem.status,
+                      resolved_count: resolvedImageUrls.length
+                    }, null, 2)}</pre>
+                  </div>
+                </details>
+              </div>
 
               <DialogFooter className="pt-6 border-t border-stone-100 dark:border-zinc-800">
                 <Button 
