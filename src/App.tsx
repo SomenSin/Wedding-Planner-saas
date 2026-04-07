@@ -337,26 +337,56 @@ const CoupleDashboard: React.FC<{ isAdmin: boolean; userEmail: string; isDarkMod
 
   const handleSubmitFeedback = async (data: any) => {
     const { files, ...feedbackData } = data;
-    
     const { data: { user } } = await supabase.auth.getUser();
+    let imageUrls: string[] = [];
     
-    // Map to schema: content, user_id, type
+    if (files && files.length > 0) {
+      console.log('App Support Module: Attempting to upload', files.length, 'files');
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        
+        try {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('feedback-images')
+            .upload(fileName, file);
+            
+          if (uploadError) {
+            console.error('App Support Module: Upload error for', file.name, uploadError);
+            toast.error(`Failed to upload ${file.name}`);
+            continue;
+          }
+          
+          if (uploadData) {
+            const { data: publicRes } = supabase.storage
+              .from('feedback-images')
+              .getPublicUrl(uploadData.path);
+            
+            if (publicRes?.publicUrl) {
+              imageUrls.push(publicRes.publicUrl);
+              console.log('App Support Module: File uploaded, public URL:', publicRes.publicUrl);
+            }
+          }
+        } catch (err) {
+          console.error('App Support Module: Unexpected upload error:', err);
+        }
+      }
+    }
+
     const payload = {
-      content: `${feedbackData.subject}: ${feedbackData.content}`,
+      content: `${feedbackData.subject}\n\n${feedbackData.content}`,
       user_id: user?.id,
       type: feedbackData.category === 'bug' ? 'bug' : feedbackData.category === 'feature' ? 'feature' : 'other',
-      status: 'new'
+      status: 'new',
+      image_url: imageUrls.length > 0 ? imageUrls.join(',') : null
     };
 
-    const { data: insertedData, error: insertError } = await supabase
-      .from('user_feedback')
-      .insert([payload])
-      .select();
-
-    if (insertError) throw insertError;
-
-    if (files && files.length > 0 && insertedData?.[0]) {
-      console.log('Files to upload for feedback:', files);
+    console.log('App Support Module: Inserting feedback payload:', payload);
+    const { error: insertError } = await supabase.from('user_feedback').insert([payload]);
+    
+    if (insertError) {
+      console.error('App Support Module: Database insert error:', insertError);
+      throw insertError;
     }
   };
 
