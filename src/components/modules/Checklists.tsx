@@ -90,18 +90,18 @@ const ProgressRing = ({ progress }: { progress: number }) => {
 };
 
 const DEFAULT_CHECKLISTS = [
-  { title: "12 Months Before", items: ["Set wedding budget", "Draft guest list"] },
-  { title: "11 Months Before", items: ["Research venues", "Hire wedding planner"] },
-  { title: "10 Months Before", items: ["Finalize venue", "Choose wedding theme & colors"] },
-  { title: "9 Months Before", items: ["Hire photographer & videographer", "Start dress shopping"] },
-  { title: "8 Months Before", items: ["Order wedding dress", "Send Save the Dates"] },
-  { title: "7 Months Before", items: ["Book hotel blocks", "Choose wedding party"] },
-  { title: "6 Months Before", items: ["Book officiant", "Select caterer & tasting"] },
-  { title: "5 Months Before", items: ["Create gift registry", "Design wedding invitations"] },
-  { title: "4 Months Before", items: ["Order invitations", "Book transportation"] },
-  { title: "3 Months Before", items: ["Mail invitations", "Finalize menu and cake"] },
-  { title: "2 Months Before", items: ["Purchase wedding bands", "Trial hair & makeup"] },
-  { title: "1 Month Before", items: ["Marriage license", "Seating chart", "Final dress fitting"] }
+  { title: "12 Months Before", items: ["Set wedding budget"] },
+  { title: "11 Months Before", items: ["Research venues"] },
+  { title: "10 Months Before", items: ["Finalize venue"] },
+  { title: "9 Months Before", items: ["Hire photographer"] },
+  { title: "8 Months Before", items: ["Send Save the Dates"] },
+  { title: "7 Months Before", items: ["Book hotel blocks"] },
+  { title: "6 Months Before", items: ["Select caterer"] },
+  { title: "5 Months Before", items: ["Create gift registry"] },
+  { title: "4 Months Before", items: ["Order invitations"] },
+  { title: "3 Months Before", items: ["Mail invitations"] },
+  { title: "2 Months Before", items: ["Purchase wedding bands"] },
+  { title: "1 Month Before", items: ["Marriage license"] }
 ];
 
 export const Checklists: React.FC<ChecklistsProps> = ({
@@ -127,13 +127,14 @@ export const Checklists: React.FC<ChecklistsProps> = ({
   const [hasAttemptedSeed, setHasAttemptedSeed] = useState(false);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
+  const seedingRef = React.useRef(false);
+
   // Auto-seed if empty
   React.useEffect(() => {
-    if (!isLoading && categories.length === 0 && userId && !isSeeding && !hasAttemptedSeed) {
+    if (!isLoading && categories.length === 0 && userId && !seedingRef.current) {
       handleSeedDefaults();
-      setHasAttemptedSeed(true);
     }
-  }, [categories.length, userId, isSeeding, hasAttemptedSeed, isLoading]);
+  }, [categories.length, userId, isLoading]);
 
   const handleAddCategory = async () => {
     if (!newCategoryTitle) {
@@ -214,7 +215,8 @@ export const Checklists: React.FC<ChecklistsProps> = ({
   };
 
   const handleSeedDefaults = async () => {
-    if (isSeeding) return;
+    if (seedingRef.current) return;
+    seedingRef.current = true;
     setIsSeeding(true);
     
     try {
@@ -242,7 +244,13 @@ export const Checklists: React.FC<ChecklistsProps> = ({
           .select()
           .single();
           
-        if (catErr) throw catErr;
+        if (catErr) {
+          // If we hit a race condition where another call inserted this title
+          if (catErr.code === '23505') { // Unique constraint violation (if exists)
+             continue;
+          }
+          throw catErr;
+        }
         
         // Insert associated tasks
         if (cat) {
@@ -261,9 +269,18 @@ export const Checklists: React.FC<ChecklistsProps> = ({
         }
       }
       
-      toast.success('Default wedding roadmap synchronized!');
-      refreshData();
+      // Only show success if we actually added something
+      const { data: finalCats } = await supabase
+        .from('checklist_categories')
+        .select('id')
+        .eq('couple_id', userId);
+        
+      if (finalCats && finalCats.length > 0) {
+        toast.success('Default wedding roadmap synchronized!');
+        refreshData();
+      }
     } catch (error: any) {
+      console.error('Seeding error:', error);
       toast.error('Failed to sync roadmap: ' + error.message);
     } finally {
       setIsSeeding(false);

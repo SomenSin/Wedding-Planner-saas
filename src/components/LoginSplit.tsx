@@ -251,6 +251,23 @@ export const LoginSplit: React.FC = () => {
                 </>
               )}
             </Button>
+
+            {isLogin && (
+              <Button 
+                type="button" 
+                variant="outline"
+                className="w-full h-12 border-stone-200 dark:border-zinc-800 dark:text-white rounded-none group transition-all font-serif italic text-lg"
+                onClick={() => {
+                  setEmail('demo@demo.com');
+                  setPassword('demo@demo.com');
+                  toast.success('Demo credentials loaded', {
+                    description: 'Click Sign In to explore the platform.'
+                  });
+                }}
+              >
+                Demo Login
+              </Button>
+            )}
           </form>
 
           <div className="mt-8 pt-8 border-t border-stone-200 dark:border-zinc-800 text-center">
